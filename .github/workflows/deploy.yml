@@ -17,77 +17,25 @@ permissions:
   contents: read
 
 env:
-  AWS_REGION: "us-east-1"
-  AWS_ROLE_ARN: "arn:aws:iam::ACCOUNT_ID:role/github-actions-cloudmart-deploy-role"
-  EKS_CLUSTER_NAME: "cloudmart-cluster"
-  NAMESPACE: ${{ github.ref_name == 'main' && 'cloudmart-prod' || 'cloudmart-staging' }}
+  AWS_REGION: us-east-1
+  AWS_ROLE_ARN: arn:aws:iam::537090271991:role/github-actions-cloudmart-deploy-role
+  CLUSTER_NAME: cloudmart-prod-eks
 
 jobs:
-  detect-changes:
-    name: Detect Service Changes
-    runs-on: ubuntu-latest
-    outputs:
-      services: ${{ steps.filter.outputs.changes }}
-      has_changes: ${{ steps.filter.outputs.any_changed }}
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Path Filter
-        id: filter
-        uses: dorny/paths-filter@v3
-        with:
-          filters: |
-            frontend:
-              - 'services/frontend/**'
-              - 'k8s/frontend.yaml'
-              - 'k8s/configmap.yaml'
-            notification-service:
-              - 'services/notification-service/**'
-              - 'k8s/notification-service.yaml'
-              - 'k8s/configmap.yaml'
-            order-service:
-              - 'services/order-service/**'
-              - 'k8s/order-service.yaml'
-              - 'k8s/configmap.yaml'
-            product-service:
-              - 'services/product-service/**'
-              - 'k8s/product-service.yaml'
-              - 'k8s/product-service-canary.yaml'
-              - 'k8s/configmap.yaml'
-            user-service:
-              - 'services/user-service/**'
-              - 'k8s/user-service.yaml'
-              - 'k8s/configmap.yaml'
-
-  validate-manifests:
-    name: Validate Manifests
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Validate Kubernetes Manifests
-        run: |
-          KUBECONFORM_VERSION="v0.6.7"
-          echo "Installing Kubeconform $KUBECONFORM_VERSION..."
-          curl -L -s https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz | tar xz kubeconform
-          ./kubeconform -summary -ignore-missing-schemas k8s/
-
-  lint-and-test:
-    name: Lint & Test
-    needs: detect-changes
-    if: needs.detect-changes.outputs.has_changes == 'true'
+# -----------------------------
+# 1. LINT + TEST (CI)
+# -----------------------------
+  ci:
+    name: CI - Lint & Test
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        service: ${{ fromJSON(needs.detect-changes.outputs.services) }}
+        service: [frontend, user-service, product-service, order-service, notification-service]
+
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Lint Dockerfile
         uses: hadolint/hadolint-action@v3.1.0
@@ -133,36 +81,36 @@ jobs:
           cd services/${{ matrix.service }}
           python -m unittest discover -s tests
 
-  build-scan-push:
-    name: Build, Scan & Push
-    needs: [detect-changes, lint-and-test]
+# -----------------------------
+# 2. BUILD + SCAN + PUSH
+# -----------------------------
+  build:
+    name: Build & Push Images
+    needs: ci
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        service: ${{ fromJSON(needs.detect-changes.outputs.services) }}
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+        service: [frontend, user-service, product-service, order-service, notification-service]
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+    steps:
+      - uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Configure AWS Credentials (OIDC)
+      - name: AWS Login (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ env.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
           audience: sts.amazonaws.com
 
-      - name: Log in to Amazon ECR
+      - name: Login ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build Local Image for Scan
+      - name: Build Image for Scan
         uses: docker/build-push-action@v5
         with:
           context: ./services/${{ matrix.service }}
@@ -176,12 +124,12 @@ jobs:
         with:
           image-ref: 'local-image:latest'
           format: 'table'
-          exit-code: '1' # Fails build on CRITICAL findings
+          exit-code: '1'
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL'
 
-      - name: Push Docker Image to ECR
+      - name: Push Image to ECR
         uses: docker/build-push-action@v5
         with:
           context: ./services/${{ matrix.service }}
@@ -191,42 +139,44 @@ jobs:
             ${{ steps.login-ecr.outputs.registry }}/${{ matrix.service }}:sha-${{ github.sha }}
           cache-from: type=gha
 
-  approve-prod:
-    name: Approve Production Deploy
+# -----------------------------
+# 3. MANIFEST VALIDATION
+# -----------------------------
+  validate:
+    name: Validate Kubernetes YAML
     runs-on: ubuntu-latest
-    if: github.ref_name == 'main'
-    needs: [build-scan-push, validate-manifests]
-    environment: production
     steps:
-      - name: Approve Production Deploy
-        run: echo "Production deployment approved"
+      - uses: actions/checkout@v4
 
-  deploy:
-    name: Deploy to EKS
-    needs: [detect-changes, build-scan-push, validate-manifests, lint-and-test, approve-prod]
-    if: |
-      always() &&
-      needs.detect-changes.outputs.has_changes == 'true' &&
-      needs.build-scan-push.result == 'success' &&
-      needs.validate-manifests.result == 'success' &&
-      (github.ref_name == 'develop' || (github.ref_name == 'main' && needs.approve-prod.result == 'success'))
+      - name: Install kubeconform
+        run: |
+          curl -L -s -o kubeconform.tar.gz \
+            https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz
+          tar -xzf kubeconform.tar.gz
+
+      - name: Validate Manifests
+        run: ./kubeconform -summary -ignore-missing-schemas k8s/
+
+# -----------------------------
+# 4. DEPLOY TO STAGING
+# -----------------------------
+  deploy-staging:
+    name: Deploy to Staging
+    needs: [build, validate]
+    if: github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        service: ${{ fromJSON(needs.detect-changes.outputs.services) }}
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
 
-      - name: Configure AWS Credentials (OIDC)
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: AWS Login
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ env.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
           audience: sts.amazonaws.com
 
-      - name: Log in to Amazon ECR
+      - name: Login ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
@@ -235,102 +185,165 @@ jobs:
         with:
           version: 'latest'
 
-      - name: Update Kubeconfig
-        run: |
-          aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name ${{ env.CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
 
-      - name: Deploy Service to EKS
+      - name: Deploy All Services to Staging
         run: |
           REGISTRY="${{ steps.login-ecr.outputs.registry }}"
           IMAGE_TAG="sha-${{ github.sha }}"
-          NAMESPACE="${{ env.NAMESPACE }}"
-          SERVICE="${{ matrix.service }}"
-          
-          sed -i "s|namespace: cloudmart-prod|namespace: $NAMESPACE|g" k8s/namespace.yaml
-          sed -i "s|namespace: cloudmart-prod|namespace: $NAMESPACE|g" k8s/configmap.yaml
-          
+          NAMESPACE="cloudmart-staging"
+          SERVICES="frontend user-service product-service order-service notification-service"
+
+          # Apply namespace + configmap first (with namespace substitution)
+          sed "s|namespace: cloudmart-prod|namespace: $NAMESPACE|g" k8s/namespace.yaml | kubectl apply -f -
+          sed "s|namespace: cloudmart-prod|namespace: $NAMESPACE|g" k8s/configmap.yaml | kubectl apply -f -
+
+          for SERVICE in $SERVICES; do
+            MANIFEST_FILE="k8s/$SERVICE.yaml"
+            echo "Deploying $SERVICE to $NAMESPACE..."
+            sed \
+              -e "s|namespace: cloudmart-prod|namespace: $NAMESPACE|g" \
+              -e "s|image: .*/$SERVICE:.*|image: $REGISTRY/$SERVICE:$IMAGE_TAG|g" \
+              "$MANIFEST_FILE" | kubectl apply -f -
+          done
+
+      - name: Wait for Rollouts (Staging)
+        run: |
+          NAMESPACE="cloudmart-staging"
+          for SERVICE in frontend user-service product-service order-service notification-service; do
+            echo "Waiting for $SERVICE rollout..."
+            kubectl rollout status deployment/$SERVICE -n $NAMESPACE --timeout=5m
+          done
+
+      - name: Post-Deploy Smoke Tests (Staging)
+        run: |
+          NAMESPACE="cloudmart-staging"
+          declare -A SERVICE_PORTS=( [frontend]="80" [product-service]="8001" [order-service]="8002" [user-service]="8003" [notification-service]="8004" )
+          declare -A SERVICE_PATHS=( [frontend]="/health" [product-service]="/ready" [order-service]="/ready" [user-service]="/ready" [notification-service]="/ready" )
+
+          for SERVICE in "${!SERVICE_PORTS[@]}"; do
+            PORT="${SERVICE_PORTS[$SERVICE]}"
+            PATH_URL="${SERVICE_PATHS[$SERVICE]}"
+            echo "Smoke testing $SERVICE on port $PORT at $PATH_URL..."
+            kubectl port-forward svc/$SERVICE 8888:$PORT -n $NAMESPACE &
+            PF_PID=$!
+            sleep 5
+            if curl -f -s http://localhost:8888$PATH_URL; then
+              echo "$SERVICE smoke test passed"
+            else
+              echo "$SERVICE smoke test FAILED"
+              kill $PF_PID
+              exit 1
+            fi
+            kill $PF_PID
+            sleep 2
+          done
+
+# -----------------------------
+# 5. MANUAL APPROVAL FOR PROD
+# -----------------------------
+  approve:
+    name: Approve Production
+    needs: [build, validate]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - run: echo "Production deployment approved by reviewer"
+
+# -----------------------------
+# 6. DEPLOY TO PROD
+# -----------------------------
+  deploy-prod:
+    name: Deploy to Production
+    needs: approve
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: AWS Login
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          audience: sts.amazonaws.com
+
+      - name: Login ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name ${{ env.CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+
+      - name: Deploy All Services to Production
+        run: |
+          REGISTRY="${{ steps.login-ecr.outputs.registry }}"
+          IMAGE_TAG="sha-${{ github.sha }}"
+          NAMESPACE="cloudmart-prod"
+
           kubectl apply -f k8s/namespace.yaml
           kubectl apply -f k8s/configmap.yaml
-          
-          if [ "$SERVICE" = "product-service" ]; then
-            if kubectl get crd rollouts.argoproj.io >/dev/null 2>&1; then
-              echo "Argo Rollouts CRD detected! Applying canary rollout..."
-              MANIFEST_FILE="k8s/product-service-canary.yaml"
-              
-              sed -i "s|<YOUR-REGISTRY>/$SERVICE:latest|$REGISTRY/$SERVICE:$IMAGE_TAG|g" $MANIFEST_FILE
-              sed -i "s|image: .*/$SERVICE:.*|image: $REGISTRY/$SERVICE:$IMAGE_TAG|g" $MANIFEST_FILE
-              sed -i "s|namespace: cloudmart-prod|namespace: $NAMESPACE|g" $MANIFEST_FILE
-              
-              kubectl apply -f $MANIFEST_FILE
-              
-              echo "Installing kubectl-argo-rollouts CLI plugin..."
-              curl -LO https://github.com/argoproj/argo-rollouts/releases/latest/download/kubectl-argo-rollouts-linux-amd64
-              chmod +x ./kubectl-argo-rollouts-linux-amd64
-              sudo mv ./kubectl-argo-rollouts-linux-amd64 /usr/local/bin/kubectl-argo-rollouts
-              
-              kubectl argo rollouts status product-service -n $NAMESPACE --timeout 5m
-            else
-              echo "Argo Rollouts CRD not found. Defaulting to standard deployment..."
-              MANIFEST_FILE="k8s/product-service.yaml"
-              
-              sed -i "s|<YOUR-REGISTRY>/$SERVICE:latest|$REGISTRY/$SERVICE:$IMAGE_TAG|g" $MANIFEST_FILE
-              sed -i "s|image: .*/$SERVICE:.*|image: $REGISTRY/$SERVICE:$IMAGE_TAG|g" $MANIFEST_FILE
-              sed -i "s|namespace: cloudmart-prod|namespace: $NAMESPACE|g" $MANIFEST_FILE
-              
-              kubectl apply -f $MANIFEST_FILE
-              kubectl rollout status deployment/$SERVICE -n $NAMESPACE --timeout=5m
-            fi
-          else
+
+          for SERVICE in frontend user-service order-service notification-service; do
             MANIFEST_FILE="k8s/$SERVICE.yaml"
-            
-            sed -i "s|<YOUR-REGISTRY>/$SERVICE:latest|$REGISTRY/$SERVICE:$IMAGE_TAG|g" $MANIFEST_FILE
-            sed -i "s|image: .*/$SERVICE:.*|image: $REGISTRY/$SERVICE:$IMAGE_TAG|g" $MANIFEST_FILE
-            sed -i "s|namespace: cloudmart-prod|namespace: $NAMESPACE|g" $MANIFEST_FILE
-            
-            kubectl apply -f $MANIFEST_FILE
-            kubectl rollout status deployment/$SERVICE -n $NAMESPACE --timeout=5m
+            echo "Deploying $SERVICE to $NAMESPACE..."
+            sed "s|image: .*/$SERVICE:.*|image: $REGISTRY/$SERVICE:$IMAGE_TAG|g" \
+              "$MANIFEST_FILE" | kubectl apply -f -
+          done
+
+          # product-service: use canary if Argo Rollouts is installed
+          if kubectl get crd rollouts.argoproj.io > /dev/null 2>&1; then
+            echo "Argo Rollouts detected — applying canary rollout for product-service..."
+            sed "s|image: .*/product-service:.*|image: $REGISTRY/product-service:$IMAGE_TAG|g" \
+              k8s/product-service-canary.yaml | kubectl apply -f -
+
+            curl -LO https://github.com/argoproj/argo-rollouts/releases/latest/download/kubectl-argo-rollouts-linux-amd64
+            chmod +x ./kubectl-argo-rollouts-linux-amd64
+            sudo mv ./kubectl-argo-rollouts-linux-amd64 /usr/local/bin/kubectl-argo-rollouts
+
+            kubectl argo rollouts status product-service -n $NAMESPACE --timeout 10m
+          else
+            echo "Argo Rollouts not found — using standard rolling deployment for product-service..."
+            sed "s|image: .*/product-service:.*|image: $REGISTRY/product-service:$IMAGE_TAG|g" \
+              k8s/product-service.yaml | kubectl apply -f -
           fi
 
-      - name: Post-Deployment Smoke Test
+      - name: Wait for Rollouts (Production)
         run: |
-          NAMESPACE="${{ env.NAMESPACE }}"
-          SERVICE="${{ matrix.service }}"
-          
-          case "$SERVICE" in
-            frontend)
-              PORT=80
-              PATH_URL="/health"
-              ;;
-            product-service)
-              PORT=8001
-              PATH_URL="/ready"
-              ;;
-            order-service)
-              PORT=8002
-              PATH_URL="/ready"
-              ;;
-            user-service)
-              PORT=8003
-              PATH_URL="/ready"
-              ;;
-            notification-service)
-              PORT=8004
-              PATH_URL="/ready"
-              ;;
-          esac
-          
-          echo "Executing post-deployment smoke test for $SERVICE in $NAMESPACE..."
-          
-          kubectl port-forward svc/$SERVICE 8888:$PORT -n $NAMESPACE &
-          PF_PID=$!
-          
-          sleep 5
-          
-          if curl -f -s http://localhost:8888$PATH_URL; then
-            echo "Smoke test passed successfully for service: $SERVICE"
+          NAMESPACE="cloudmart-prod"
+          for SERVICE in frontend user-service order-service notification-service; do
+            echo "Waiting for $SERVICE rollout..."
+            kubectl rollout status deployment/$SERVICE -n $NAMESPACE --timeout=5m
+          done
+
+      - name: Post-Deploy Smoke Tests (Production)
+        run: |
+          NAMESPACE="cloudmart-prod"
+          declare -A SERVICE_PORTS=( [frontend]="80" [product-service]="8001" [order-service]="8002" [user-service]="8003" [notification-service]="8004" )
+          declare -A SERVICE_PATHS=( [frontend]="/health" [product-service]="/ready" [order-service]="/ready" [user-service]="/ready" [notification-service]="/ready" )
+
+          for SERVICE in "${!SERVICE_PORTS[@]}"; do
+            PORT="${SERVICE_PORTS[$SERVICE]}"
+            PATH_URL="${SERVICE_PATHS[$SERVICE]}"
+            echo "Smoke testing $SERVICE..."
+            kubectl port-forward svc/$SERVICE 8888:$PORT -n $NAMESPACE &
+            PF_PID=$!
+            sleep 5
+            if curl -f -s http://localhost:8888$PATH_URL; then
+              echo "$SERVICE passed"
+            else
+              echo "$SERVICE FAILED"
+              kill $PF_PID
+              exit 1
+            fi
             kill $PF_PID
-          else
-            echo "Smoke test failed for service: $SERVICE"
-            kill $PF_PID
-            exit 1
-          fi
+            sleep 2
+          done
