@@ -8,6 +8,9 @@ RUN npm install --omit=dev
 # ---- Stage 2: Runtime ----
 FROM node:20-alpine
 
+# Upgrade packages to patch vulnerabilities
+RUN apk update && apk upgrade --no-cache
+
 # Create non-root user
 RUN addgroup -S appuser && adduser -S appuser -G appuser
 
