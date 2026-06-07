@@ -15,3 +15,16 @@ variable "repository_names" {
     "user-service"
   ]
 }
+
+variable "github_org_or_user" {
+  description = "GitHub Organization or Username"
+  type        = string
+  default     = "Inupama21"
+}
+
+variable "github_repo" {
+  description = "GitHub Repository Name"
+  type        = string
+  default     = "CloudMart-Team_Pixels"
+}
+
