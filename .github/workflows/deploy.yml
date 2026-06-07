@@ -18,7 +18,7 @@ permissions:
 env:
   AWS_REGION: "us-east-1"
   AWS_ROLE_ARN: "arn:aws:iam::ACCOUNT_ID:role/github-actions-cloudmart-deploy-role"
-  EKS_CLUSTER_NAME: "cloudmart-prod-eks"
+  EKS_CLUSTER_NAME: "cloudmart-cluster"
   NAMESPACE: ${{ github.ref_name == 'main' && 'cloudmart-prod' || 'cloudmart-staging' }}
 
 jobs:

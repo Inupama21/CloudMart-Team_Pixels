@@ -19,7 +19,7 @@ spec:
       # serviceAccountName: notification-service-sa
       containers:
       - name: notification-service
-        image: <YOUR-REGISTRY>/notification-service:latest
+        image: 537090271991.dkr.ecr.us-east-1.amazonaws.com/notification-service:latest
         ports:
         - containerPort: 8004
         env:

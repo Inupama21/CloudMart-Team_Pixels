@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: <YOUR-REGISTRY>/frontend:latest
+        image: 537090271991.dkr.ecr.us-east-1.amazonaws.com/frontend:latest
         ports:
         - containerPort: 80
         resources:
