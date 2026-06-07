@@ -99,7 +99,7 @@ function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
 
-  //test the pipeline
+  //test the pipeline 222222
   // Fetch products
   const fetchProducts = useCallback(async () => {
     try {
