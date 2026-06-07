@@ -5,9 +5,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 // ---------------------------------------------------------------------------
 const API = {
   products: process.env.REACT_APP_PRODUCT_URL || '/api/products',
-  orders:   process.env.REACT_APP_ORDER_URL   || '/api/orders',
-  auth:     process.env.REACT_APP_USER_URL    || '/api/auth',
-  users:    process.env.REACT_APP_USER_URL    || '/api/users',
+  orders: process.env.REACT_APP_ORDER_URL || '/api/orders',
+  auth: process.env.REACT_APP_USER_URL || '/api/auth',
+  users: process.env.REACT_APP_USER_URL || '/api/users',
 };
 
 // ---------------------------------------------------------------------------
@@ -99,6 +99,7 @@ function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
 
+  //test the pipeline
   // Fetch products
   const fetchProducts = useCallback(async () => {
     try {
