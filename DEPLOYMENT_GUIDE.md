@@ -1,0 +1,169 @@
+# CloudMart — AWS & Kubernetes Deployment Guide
+
+This guide describes how to deploy the database/message-queue infrastructure and the observability stack, and how to link the Kubernetes microservices to these AWS services.
+
+---
+
+## Deployment Architecture
+
+```mermaid
+graph TD
+    subgraph EKS Cluster
+        FS[frontend-service] --> PS[product-service]
+        FS --> OS[order-service]
+        FS --> US[user-service]
+        OS --> PS
+    end
+
+    subgraph AWS Managed Services
+        US -->|Postgres| RDS[(RDS PostgreSQL)]
+        PS -->|boto3| DD[(DynamoDB)]
+        OS -->|Publish Event| SQS[SQS Queue]
+        SQS -->|Consume Event| NS[notification-service]
+        SQS -.->|DLQ| DLQ[SQS DLQ]
+    end
+
+    subgraph AWS Observability
+        RDS -->|Metrics| CW[CloudWatch Alarms & Dashboard]
+        DD -->|Metrics| CW
+        DLQ -->|Depth| CW
+        OS -->|Logs| CWLG[CloudWatch Log Groups]
+    end
+```
+
+---
+
+## Phase 1: Database Infrastructure Deployment (Terraform)
+
+This phase deploys the RDS PostgreSQL instance, the DynamoDB Table, and the SQS Queue with its Dead-Letter Queue.
+
+### 1. Initialize and Apply Terraform
+
+Navigate to `infra/databases/`:
+```bash
+cd infra/databases
+terraform init
+terraform plan
+terraform apply
+```
+
+> [!NOTE]
+> The database master password (`db_password`) is configured to auto-generate using the `random` provider. You do not need to manually specify it during deployment.
+
+### 2. Capture the Outputs
+
+Once the apply completes, Terraform will output several variables. Take note of these:
+* **`rds_endpoint`**: Connection endpoint for PostgreSQL (e.g. `cloudmart-users-db-dev.c3xxxxxx.us-east-1.rds.amazonaws.com:5432`)
+* **`db_password`**: To retrieve the generated password, run:
+  ```bash
+  terraform output -raw db_password
+  ```
+* **`dynamodb_table_name`**: Name of the DynamoDB table (e.g. `cloudmart-products-dev`)
+* **`sqs_queue_url`**: Queue URL for order events
+* **`rds_instance_identifier`**: RDS ID for monitoring (needed in Phase 3)
+* **`sqs_dlq_name`**: Dead Letter Queue name for monitoring (needed in Phase 3)
+
+---
+
+## Phase 2: Kubernetes Configuration
+
+Now update the Kubernetes ConfigMap and Secret with the outputs captured above.
+
+### 1. Update ConfigMap (`k8s/configmap.yaml`)
+
+Ensure the backends are set to use the cloud adapters:
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cloudmart-config
+  namespace: cloudmart-prod
+data:
+  PRODUCT_STORE_BACKEND: "dynamodb"
+  DYNAMODB_TABLE: "cloudmart-products-dev"  # Replace with output
+  ORDER_QUEUE_BACKEND: "sqs"
+  NOTIFICATION_QUEUE_BACKEND: "sqs"
+  USER_DB_BACKEND: "postgres"
+  DB_PORT: "5432"
+  DB_NAME: "cloudmart"
+  DB_SSLMODE: "require"
+  AWS_REGION: "us-east-1"
+```
+
+### 2. Update Secrets (`k8s/secrets.yaml`)
+
+Inject the actual sensitive values:
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cloudmart-secrets
+  namespace: cloudmart-prod
+type: Opaque
+stringData:
+  JWT_SECRET: "your-super-secret-jwt-key"  # Change to a strong key
+  DB_HOST: "cloudmart-users-db-dev.xxxxxx.us-east-1.rds.amazonaws.com"  # Replace with output (without the :5432 port suffix)
+  DB_USER: "cloudmart"
+  DB_PASSWORD: "your-auto-generated-password"  # Replace with output
+  SQS_QUEUE_URL: "https://sqs.us-east-1.amazonaws.com/123456789012/cloudmart-order-events-dev"  # Replace with output
+```
+
+### 3. Deploy Kubernetes Resources
+
+Apply the Kubernetes descriptors to your EKS cluster:
+```bash
+kubectl apply -f k8s/namespace.yaml
+kubectl apply -f k8s/configmap.yaml
+kubectl apply -f k8s/secrets.yaml
+kubectl apply -f k8s/user-service.yaml
+kubectl apply -f k8s/product-service.yaml
+kubectl apply -f k8s/order-service.yaml
+kubectl apply -f k8s/notification-service.yaml
+kubectl apply -f k8s/frontend.yaml
+```
+
+---
+
+## Phase 3: Observability Deployment (Terraform)
+
+This phase provisions CloudWatch Log Groups, metric filters, alarms, and a premium dashboard.
+
+### 1. Create a `terraform.tfvars` file for Observability
+
+Navigate to `infra/observability/` and create a `terraform.tfvars` containing the values from Phase 1:
+```hcl
+environment             = "dev"
+rds_instance_identifier = "cloudmart-users-db-dev"
+dynamodb_table_name     = "cloudmart-products-dev"
+sqs_dlq_name            = "cloudmart-order-events-dlq-dev"
+```
+
+### 2. Initialize and Apply Observability Stack
+
+```bash
+cd infra/observability
+terraform init
+terraform plan
+terraform apply
+```
+
+Once completed, navigate to **CloudWatch > Dashboards** in the AWS Console to view the **`CloudMart-Overview-dev`** dashboard.
+
+---
+
+## Verification & Testing
+
+Verify that services are connected to AWS:
+
+| Service | Test Action | Expected Result | Verification Check |
+|---|---|---|---|
+| **user-service** | Register a new user | Response code `201 Created` | Check RDS Postgres table `users` contains the record. |
+| **product-service** | List products | Response code `200 OK` | Check DynamoDB table contains products. |
+| **order-service** | Create a new order | Response code `201 Created` | Check SQS queue receives a message. |
+| **notification-service**| Check console logs | Consumes SQS message | Verify log prints `Successfully processed and deleted message`. |
+| **CloudWatch** | View Dashboard | Dashboard loads graphs | Active CPU and database connections show up. |
+
+---
+
+> [!WARNING]
+> Ensure that only one team member runs `terraform apply` to avoid duplicate resources and naming conflicts.

@@ -165,20 +165,14 @@ class InMemoryStore:
 
 class DynamoDBStore:
     """
-    AWS DynamoDB adapter.
-
-    To use: set STORE_BACKEND=dynamodb and DYNAMODB_TABLE=<table-name>
-
-    Students: implement each method using boto3.
-    Requires IRSA / workload identity for credentials.
+    AWS DynamoDB adapter for product-service.
+    Implemented in stores/dynamodb_store.py.
     """
 
     def __init__(self):
-        # TODO: import boto3; create dynamodb resource
-        # self.table = boto3.resource('dynamodb').Table(os.environ['DYNAMODB_TABLE'])
         raise NotImplementedError(
-            "DynamoDB store not implemented yet. "
-            "See the assignment brief Section 3.3 for guidance."
+            "Use create_product_store() factory — "
+            "implementation is in stores/dynamodb_store.py"
         )
 
 
@@ -219,7 +213,8 @@ class CosmosDBStore:
 def create_store():
     backend = os.environ.get("STORE_BACKEND", "memory").lower()
     if backend == "dynamodb":
-        return DynamoDBStore()
+        from stores.dynamodb_store import DynamoDBStore as DynamoStore
+        return DynamoStore(SEED_PRODUCTS, logger)
     elif backend == "firestore":
         return FirestoreStore()
     elif backend == "cosmosdb":

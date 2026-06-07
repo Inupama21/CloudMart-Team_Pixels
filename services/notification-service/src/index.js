@@ -161,22 +161,43 @@ async function pollCloudQueue() {
   const backend = (process.env.QUEUE_BACKEND || 'memory').toLowerCase();
 
   if (backend === 'sqs') {
-    // TODO: AWS SQS — use @aws-sdk/client-sqs
-    // const { SQSClient, ReceiveMessageCommand, DeleteMessageCommand } = require('@aws-sdk/client-sqs');
-    // const client = new SQSClient({ region: process.env.AWS_REGION });
-    // const response = await client.send(new ReceiveMessageCommand({
-    //   QueueUrl: process.env.SQS_QUEUE_URL,
-    //   MaxNumberOfMessages: 10,
-    //   WaitTimeSeconds: 20,
-    // }));
-    // for (const msg of response.Messages || []) {
-    //   await processOrderEvent(JSON.parse(msg.Body));
-    //   await client.send(new DeleteMessageCommand({
-    //     QueueUrl: process.env.SQS_QUEUE_URL,
-    //     ReceiptHandle: msg.ReceiptHandle,
-    //   }));
-    // }
-    console.log('[SQS] Would poll for messages...');
+    const { SQSClient, ReceiveMessageCommand, DeleteMessageCommand } = require('@aws-sdk/client-sqs');
+    const client = new SQSClient({ region: process.env.AWS_REGION || 'us-east-1' });
+    const queueUrl = process.env.SQS_QUEUE_URL;
+
+    if (!queueUrl) {
+      console.error('[SQS] SQS_QUEUE_URL not set — stopping poller');
+      return;
+    }
+
+    console.log(`[SQS] Polling queue: ${queueUrl}`);
+    try {
+      const response = await client.send(new ReceiveMessageCommand({
+        QueueUrl: queueUrl,
+        MaxNumberOfMessages: 10,
+        WaitTimeSeconds: 20, // Long polling
+        VisibilityTimeout: 30,
+      }));
+
+      for (const msg of response.Messages || []) {
+        try {
+          const event = JSON.parse(msg.Body);
+          await processOrderEvent(event);
+          
+          // Delete message from queue after successful processing
+          await client.send(new DeleteMessageCommand({
+            QueueUrl: queueUrl,
+            ReceiptHandle: msg.ReceiptHandle,
+          }));
+          console.log(`[SQS] Successfully processed and deleted message for order ${event.orderId}`);
+        } catch (err) {
+          console.error('[SQS] Error processing message:', err);
+          // Don't delete — let visibility timeout expire so it retries
+        }
+      }
+    } catch (err) {
+      console.error('[SQS] Error receiving messages:', err);
+    }
   } else if (backend === 'pubsub') {
     // TODO: GCP Pub/Sub — use @google-cloud/pubsub
     // Pub/Sub uses push or streaming pull — implement subscription handler
