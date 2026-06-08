@@ -1,6 +1,6 @@
 # CloudMart — AWS & Kubernetes Deployment Guide
 
-This guide describes how to deploy the database/message-queue infrastructure and the observability stack, and how to link the Kubernetes microservices to these AWS services.
+This guide describes how to deploy the full CloudMart infrastructure (networking, databases, messaging, observability) and Kubernetes microservices using the modular Terraform setup.
 
 ---
 
@@ -33,15 +33,56 @@ graph TD
 
 ---
 
-## Phase 1: Database Infrastructure Deployment (Terraform)
+## Repository Structure
 
-This phase deploys the RDS PostgreSQL instance, the DynamoDB Table, and the SQS Queue with its Dead-Letter Queue.
+```
+infra/
+├── bootstrap/                  # S3 backend + DynamoDB lock table
+├── environments/
+│   ├── staging/                # Staging root module
+│   │   ├── backend.tf
+│   │   ├── main.tf             # Calls networking, database, messaging, observability modules
+│   │   ├── variables.tf
+│   │   ├── outputs.tf
+│   │   └── terraform.tfvars.example
+│   └── production/             # Production root module
+│       ├── backend.tf
+│       ├── main.tf
+│       ├── variables.tf
+│       ├── outputs.tf
+│       └── terraform.tfvars.example
+└── modules/
+    ├── networking/             # VPC, subnets, NAT, security groups
+    ├── database/               # RDS PostgreSQL, DynamoDB
+    ├── messaging/              # SQS queue + DLQ
+    ├── observability/          # CloudWatch log groups, alarms, dashboard
+    ├── ecr/                    # ECR repositories (placeholder)
+    └── eks/                    # EKS cluster (placeholder)
+```
+
+---
+
+## Phase 0: Bootstrap Remote Backend (One-time)
+
+> [!NOTE]
+> Only run this once per AWS account. It provisions the S3 bucket and DynamoDB table for Terraform state.
+
+```bash
+cd infra/bootstrap
+terraform init
+terraform apply
+```
+
+---
+
+## Phase 1: Deploy Infrastructure (Staging or Production)
+
+Navigate to the desired environment and deploy all modules at once:
 
 ### 1. Initialize and Apply Terraform
 
-Navigate to `infra/databases/`:
 ```bash
-cd infra/databases
+cd infra/environments/staging    # or infra/environments/production
 terraform init
 terraform plan
 terraform apply
@@ -53,15 +94,15 @@ terraform apply
 ### 2. Capture the Outputs
 
 Once the apply completes, Terraform will output several variables. Take note of these:
-* **`rds_endpoint`**: Connection endpoint for PostgreSQL (e.g. `cloudmart-users-db-dev.c3xxxxxx.us-east-1.rds.amazonaws.com:5432`)
+* **`rds_endpoint`**: Connection endpoint for PostgreSQL (e.g. `cloudmart-users-db-staging.c3xxxxxx.us-east-1.rds.amazonaws.com:5432`)
 * **`db_password`**: To retrieve the generated password, run:
   ```bash
   terraform output -raw db_password
   ```
-* **`dynamodb_table_name`**: Name of the DynamoDB table (e.g. `cloudmart-products-dev`)
+* **`dynamodb_table_name`**: Name of the DynamoDB table (e.g. `cloudmart-products-staging`)
 * **`sqs_queue_url`**: Queue URL for order events
-* **`rds_instance_identifier`**: RDS ID for monitoring (needed in Phase 3)
-* **`sqs_dlq_name`**: Dead Letter Queue name for monitoring (needed in Phase 3)
+* **`rds_instance_identifier`**: RDS ID for monitoring
+* **`sqs_dlq_name`**: Dead Letter Queue name for monitoring
 
 ---
 
@@ -80,7 +121,7 @@ metadata:
   namespace: cloudmart-prod
 data:
   PRODUCT_STORE_BACKEND: "dynamodb"
-  DYNAMODB_TABLE: "cloudmart-products-dev"  # Replace with output
+  DYNAMODB_TABLE: "cloudmart-products-staging"  # Replace with output
   ORDER_QUEUE_BACKEND: "sqs"
   NOTIFICATION_QUEUE_BACKEND: "sqs"
   USER_DB_BACKEND: "postgres"
@@ -102,10 +143,10 @@ metadata:
 type: Opaque
 stringData:
   JWT_SECRET: "your-super-secret-jwt-key"  # Change to a strong key
-  DB_HOST: "cloudmart-users-db-dev.xxxxxx.us-east-1.rds.amazonaws.com"  # Replace with output (without the :5432 port suffix)
+  DB_HOST: "cloudmart-users-db-staging.xxxxxx.us-east-1.rds.amazonaws.com"  # Replace with output (without the :5432 port suffix)
   DB_USER: "cloudmart"
   DB_PASSWORD: "your-auto-generated-password"  # Replace with output
-  SQS_QUEUE_URL: "https://sqs.us-east-1.amazonaws.com/123456789012/cloudmart-order-events-dev"  # Replace with output
+  SQS_QUEUE_URL: "https://sqs.us-east-1.amazonaws.com/123456789012/cloudmart-order-events-staging"  # Replace with output
 ```
 
 ### 3. Deploy Kubernetes Resources
@@ -124,30 +165,11 @@ kubectl apply -f k8s/frontend.yaml
 
 ---
 
-## Phase 3: Observability Deployment (Terraform)
+## Phase 3: Observability
 
-This phase provisions CloudWatch Log Groups, metric filters, alarms, and a premium dashboard.
+The observability stack (CloudWatch Log Groups, alarms, and dashboard) is now deployed **automatically** as part of Phase 1 via the `observability` module. No separate Terraform apply is needed.
 
-### 1. Create a `terraform.tfvars` file for Observability
-
-Navigate to `infra/observability/` and create a `terraform.tfvars` containing the values from Phase 1:
-```hcl
-environment             = "dev"
-rds_instance_identifier = "cloudmart-users-db-dev"
-dynamodb_table_name     = "cloudmart-products-dev"
-sqs_dlq_name            = "cloudmart-order-events-dlq-dev"
-```
-
-### 2. Initialize and Apply Observability Stack
-
-```bash
-cd infra/observability
-terraform init
-terraform plan
-terraform apply
-```
-
-Once completed, navigate to **CloudWatch > Dashboards** in the AWS Console to view the **`CloudMart-Overview-dev`** dashboard.
+Once the Phase 1 deployment is complete, navigate to **CloudWatch > Dashboards** in the AWS Console to view the **`CloudMart-Overview-<environment>`** dashboard.
 
 ---
 
@@ -166,4 +188,4 @@ Verify that services are connected to AWS:
 ---
 
 > [!WARNING]
-> Ensure that only one team member runs `terraform apply` to avoid duplicate resources and naming conflicts.
+> Ensure that only one team member runs `terraform apply` per environment to avoid duplicate resources and naming conflicts.

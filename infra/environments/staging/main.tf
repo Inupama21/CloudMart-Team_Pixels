@@ -6,6 +6,10 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.5"
+    }
   }
 }
 
@@ -40,3 +44,30 @@ module "networking" {
   common_tags          = local.common_tags
 }
 
+# ── Database (RDS + DynamoDB) ─────────────────────────────────
+module "database" {
+  source = "../../modules/database"
+
+  vpc_id                = module.networking.vpc_id
+  private_subnet_ids    = module.networking.private_subnet_ids
+  eks_security_group_id = module.networking.eks_node_security_group_id
+  environment           = var.environment
+  db_password           = var.db_password
+}
+
+# ── Messaging (SQS) ──────────────────────────────────────────
+module "messaging" {
+  source = "../../modules/messaging"
+
+  environment = var.environment
+}
+
+# ── Observability (CloudWatch) ────────────────────────────────
+module "observability" {
+  source = "../../modules/observability"
+
+  environment             = var.environment
+  rds_instance_identifier = module.database.rds_instance_identifier
+  dynamodb_table_name     = module.database.dynamodb_table_name
+  sqs_dlq_name            = module.messaging.sqs_dlq_name
+}
