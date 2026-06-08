@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: user-egress-policy
+  namespace: cloudmart-prod
+
+spec:
+  podSelector:
+    matchLabels:
+      app: user-service
+
+  policyTypes:
+    - Egress
+
+  egress:
+    - ports:
+        - protocol: TCP
+          port: 5432
+
+    - ports:
+        - protocol: TCP
+          port: 443
+
+    - ports:
+        - protocol: UDP
+          port: 53
