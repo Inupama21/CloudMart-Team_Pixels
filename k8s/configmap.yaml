@@ -8,17 +8,22 @@ metadata:
   namespace: cloudmart-prod
 data:
   # Product Service
-  PRODUCT_STORE_BACKEND: "memory"   # Change to dynamodb|firestore|cosmosdb
+  PRODUCT_STORE_BACKEND: "dynamodb"
+  DYNAMODB_TABLE: "cloudmart-products-dev"
+  AWS_REGION: "us-east-1"
 
   # Order Service
   PRODUCT_SERVICE_URL: "http://product-service:8001"
-  ORDER_QUEUE_BACKEND: "memory"     # Change to sqs|pubsub|servicebus
+  ORDER_QUEUE_BACKEND: "sqs"
 
   # Notification Service
   ORDER_SERVICE_URL: "http://order-service:8002"
-  NOTIFICATION_QUEUE_BACKEND: "memory"
+  NOTIFICATION_QUEUE_BACKEND: "sqs"
   NOTIFICATION_EMAIL_BACKEND: "console"
   NOTIFICATION_POLL_INTERVAL: "5000"
 
   # User Service
-  USER_DB_BACKEND: "memory"         # Change to postgres
+  USER_DB_BACKEND: "postgres"
+  DB_PORT: "5432"
+  DB_NAME: "cloudmart"
+  DB_SSLMODE: "require"

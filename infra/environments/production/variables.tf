@@ -33,3 +33,11 @@ variable "availability_zones" {
   type    = list(string)
   default = ["us-east-1a", "us-east-1b", "us-east-1c"]
 }
+
+# ── Database
+variable "db_password" {
+  description = "Master password for the RDS instance (leave null to auto-generate)"
+  type        = string
+  sensitive   = true
+  default     = null
+}

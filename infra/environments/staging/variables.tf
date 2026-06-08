@@ -38,3 +38,11 @@ variable "enable_nat_gateway" {
   type    = bool
   default = true
 }
+
+# ── Database
+variable "db_password" {
+  description = "Master password for the RDS instance (leave null to auto-generate)"
+  type        = string
+  sensitive   = true
+  default     = null
+}
