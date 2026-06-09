@@ -6,7 +6,6 @@ on:
       - main
       - develop
       - 'feature/*'
-      - 'ci/*'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -19,7 +18,7 @@ permissions:
 env:
   AWS_REGION: us-east-1
   AWS_ROLE_ARN: arn:aws:iam::537090271991:role/github-actions-cloudmart-deploy-role
-  CLUSTER_NAME: cloudmart-prod-eks
+  CLUSTER_NAME: cloudmart-cluster
 
 jobs:
 
@@ -47,7 +46,19 @@ jobs:
         if: matrix.service == 'frontend' || matrix.service == 'order-service' || matrix.service == 'notification-service'
         run: |
           cd services/${{ matrix.service }}
-          npm install
+          npm ci
+
+      # - name: Install ESLint
+      #   if: matrix.service == 'frontend' || matrix.service == 'order-service' || matrix.service == 'notification-service'
+      #   run: |
+      #     cd services/${{ matrix.service }}
+      #     npm install --save-dev eslint
+
+      - name: Lint Node.js Service
+        if: matrix.service == 'frontend' || matrix.service == 'order-service' || matrix.service == 'notification-service'
+        run: |
+          cd services/${{ matrix.service }}
+          npx eslint .
 
       - name: Test Node.js Service
         if: matrix.service == 'frontend' || matrix.service == 'order-service' || matrix.service == 'notification-service'
