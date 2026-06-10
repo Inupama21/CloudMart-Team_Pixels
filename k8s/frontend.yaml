@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: <YOUR-REGISTRY>/frontend:latest
+        image: 537090271991.dkr.ecr.us-east-1.amazonaws.com/cloudmart-frontend:latest
         ports:
         - containerPort: 80
         resources:
@@ -80,3 +80,24 @@ spec:
 #             name: frontend
 #             port:
 #               number: 80
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cloudmart-ingress
+  namespace: cloudmart-prod
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/tags: Project=cloudmart,Environment=prod,Team=Team-Pixels,Owner=Member6
+spec:
+  ingressClassName: alb
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80
