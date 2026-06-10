@@ -6,10 +6,19 @@ metadata:
     app: cloudmart
     environment: production
 ---
+#apiVersion: v1
+#kind: Namespace
+#metadata:
+#  name: cloudmart-staging
+#  labels:
+#    app: cloudmart
+#    environment: staging
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: cloudmart-staging
+  name: cloudmart-prod
   labels:
-    app: cloudmart
-    environment: staging
+    name: cloudmart-prod
+    Project: cloudmart
+    Environment: prod
+    Team: Team-Pixels
