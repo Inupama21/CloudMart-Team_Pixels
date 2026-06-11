@@ -175,7 +175,7 @@ jobs:
   deploy-staging:
     name: Deploy to Staging
     needs: [build, validate]
-    if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/ci/cd-maheepa'
+    if: github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
 
     steps:
@@ -210,6 +210,7 @@ jobs:
           # Apply namespace + configmap first (with namespace substitution)
           sed "s|namespace: cloudmart-prod|namespace: $NAMESPACE|g" k8s/namespace.yaml | kubectl apply -f -
           sed "s|namespace: cloudmart-prod|namespace: $NAMESPACE|g" k8s/configmap-staging.yaml | kubectl apply -f -
+          kubectl apply -f k8s/ingress-staging.yaml
 
           for SERVICE in $SERVICES; do
             MANIFEST_FILE="k8s/$SERVICE.yaml"
@@ -260,7 +261,7 @@ jobs:
   approve:
     name: Approve Production
     needs: [build, validate]
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/ci/cd-maheepa'
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -272,7 +273,7 @@ jobs:
   deploy-prod:
     name: Deploy to Production
     needs: approve
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/ci/cd-maheepa'
     runs-on: ubuntu-latest
 
     steps:
@@ -305,6 +306,7 @@ jobs:
 
           kubectl apply -f k8s/namespace.yaml
           kubectl apply -f k8s/configmap-prod.yaml
+          kubectl apply -f k8s/ingress-prod.yaml
 
           for SERVICE in frontend user-service product-service order-service notification-service; do
             MANIFEST_FILE="k8s/$SERVICE.yaml"
