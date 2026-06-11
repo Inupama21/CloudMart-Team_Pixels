@@ -38,7 +38,7 @@ spec:
           valueFrom:
             secretKeyRef:
               name: cloudmart-secrets
-              key: JWT_SECRET
+              key: Y2xvdWRtYXJ0LWRldi1zZWNyZXQtY2hhbmdlLWluLXByb2R1Y3Rpb24
         resources:
           requests:
             cpu: 100m
