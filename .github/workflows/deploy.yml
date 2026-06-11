@@ -216,8 +216,10 @@ jobs:
             echo "Deploying $SERVICE to $NAMESPACE..."
             sed \
               -e "s|namespace: cloudmart-prod|namespace: $NAMESPACE|g" \
-              -e "s|image: .*/$SERVICE:.*|image: $REGISTRY/$SERVICE:$IMAGE_TAG|g" \
               "$MANIFEST_FILE" | kubectl apply -f -
+            kubectl set image deployment/$SERVICE \
+              $SERVICE=$REGISTRY/$SERVICE:$IMAGE_TAG \
+              -n $NAMESPACE
           done
 
       - name: Wait for Rollouts (Staging)
@@ -304,11 +306,17 @@ jobs:
           kubectl apply -f k8s/namespace.yaml
           kubectl apply -f k8s/configmap-prod.yaml
 
-          for SERVICE in frontend user-service order-service notification-service; do
+          for SERVICE in frontend user-service product-service order-service notification-service; do
             MANIFEST_FILE="k8s/$SERVICE.yaml"
             echo "Deploying $SERVICE to $NAMESPACE..."
-            sed "s|image: .*/$SERVICE:.*|image: $REGISTRY/$SERVICE:$IMAGE_TAG|g" \
+
+            sed \
+              -e "s|namespace: cloudmart-prod|namespace: $NAMESPACE|g" \
               "$MANIFEST_FILE" | kubectl apply -f -
+            
+            kubectl set image deployment/$SERVICE \
+              $SERVICE=$REGISTRY/$SERVICE:$IMAGE_TAG \
+              -n $NAMESPACE
           done
 
           # product-service: use canary if Argo Rollouts is installed
@@ -324,14 +332,20 @@ jobs:
             kubectl argo rollouts status product-service -n $NAMESPACE --timeout 10m
           else
             echo "Argo Rollouts not found — using standard rolling deployment for product-service..."
-            sed "s|image: .*/product-service:.*|image: $REGISTRY/product-service:$IMAGE_TAG|g" \
+
+            sed \
+              -e "s|namespace: cloudmart-prod|namespace: $NAMESPACE|g" \
               k8s/product-service.yaml | kubectl apply -f -
+
+            kubectl set image deployment/product-service \
+              product-service=$REGISTRY/product-service:$IMAGE_TAG \
+              -n $NAMESPACE
           fi
 
       - name: Wait for Rollouts (Production)
         run: |
           NAMESPACE="cloudmart-prod"
-          for SERVICE in frontend user-service order-service notification-service; do
+          for SERVICE in frontend user-service product-service order-service notification-service; do
             echo "Waiting for $SERVICE rollout..."
             kubectl rollout status deployment/$SERVICE -n $NAMESPACE --timeout=5m
           done
