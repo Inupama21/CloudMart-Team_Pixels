@@ -209,7 +209,7 @@ jobs:
 
           # Apply namespace + configmap first (with namespace substitution)
           sed "s|namespace: cloudmart-prod|namespace: $NAMESPACE|g" k8s/namespace.yaml | kubectl apply -f -
-          sed "s|namespace: cloudmart-prod|namespace: $NAMESPACE|g" k8s/configmap.yaml | kubectl apply -f -
+          sed "s|namespace: cloudmart-prod|namespace: $NAMESPACE|g" k8s/configmap-staging.yaml | kubectl apply -f -
 
           for SERVICE in $SERVICES; do
             MANIFEST_FILE="k8s/$SERVICE.yaml"
@@ -302,7 +302,7 @@ jobs:
           NAMESPACE="cloudmart-prod"
 
           kubectl apply -f k8s/namespace.yaml
-          kubectl apply -f k8s/configmap.yaml
+          kubectl apply -f k8s/configmap-prod.yaml
 
           for SERVICE in frontend user-service order-service notification-service; do
             MANIFEST_FILE="k8s/$SERVICE.yaml"
