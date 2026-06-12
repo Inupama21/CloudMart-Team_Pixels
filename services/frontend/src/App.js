@@ -228,7 +228,7 @@ function App() {
         <div style={styles.logo} onClick={() => setPage('products')}>
           CloudMart
         </div>
-        <p>By -TeamPixels-6754321</p>
+        <p>By - Ice Cube</p>
         <nav style={styles.nav}>
           <button style={styles.navBtn} onClick={() => setPage('products')}>Products</button>
           <button style={styles.navBtn} onClick={() => setPage('cart')}>
