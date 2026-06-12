@@ -70,4 +70,22 @@ module "observability" {
   rds_instance_identifier = module.database.rds_instance_identifier
   dynamodb_table_name     = module.database.dynamodb_table_name
   sqs_dlq_name            = module.messaging.sqs_dlq_name
+  cluster_name            = "cloudmart-cluster"
+  aws_region              = var.aws_region
+  alert_email             = var.alert_email
+}
+
+# ── Security ───────────────────────────────────────
+module "security" {
+  source = "../../modules/security"
+
+  aws_region          = var.aws_region
+  account_id          = var.account_id
+  oidc_url            = var.oidc_url
+  alb_arn             = var.alb_arn
+  dynamodb_table_name = module.database.dynamodb_table_name
+  sqs_queue_arn       = module.messaging.sqs_queue_arn
+  environment         = var.environment
+  team_id             = var.project
+  enable_guardduty = var.enable_guardduty
 }

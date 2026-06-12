@@ -22,9 +22,8 @@ variable "alb_arn" {
 }
 
 variable "dynamodb_table_name" {
-  description = "DynamoDB table name for products - get from Member 4"
+  description = "DynamoDB table name for products"
   type        = string
-  default     = "cloudmart-products"
 }
 
 variable "sqs_queue_arn" {
@@ -43,4 +42,10 @@ variable "team_id" {
   description = "Your group/team ID for tagging"
   type        = string
   default     = "team-pixels"
+}
+
+variable "enable_guardduty" {
+  description = "Enable GuardDuty threat detection"
+  type        = bool
+  default     = false
 }

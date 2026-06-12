@@ -23,6 +23,7 @@ resource "aws_kms_alias" "cloudmart" {
 # ─── GUARDDUTY ─────────────────────────────────────────────────────────────
 
 resource "aws_guardduty_detector" "cloudmart" {
+  count  = var.enable_guardduty ? 1 : 0
   enable = true
 
   datasources {

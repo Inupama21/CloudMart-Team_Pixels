@@ -46,3 +46,32 @@ variable "db_password" {
   sensitive   = true
   default     = null
 }
+
+variable "account_id" {
+  description = "AWS Account ID"
+  type        = string
+}
+
+variable "oidc_url" {
+  description = "EKS OIDC Provider URL without https://"
+  type        = string
+}
+
+# ── Security 
+variable "alb_arn" {
+  description = "ALB ARN for WAF association — leave empty until ALB is created"
+  type        = string
+  default     = ""
+}
+
+variable "alert_email" {
+  description = "Email address for CloudWatch alarm notifications"
+  type        = string
+  default     = "savindipaboda@gmail.com"
+}
+
+variable "enable_guardduty" {
+  description = "Enable GuardDuty"
+  type        = bool
+  default     = false
+}

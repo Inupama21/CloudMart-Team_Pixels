@@ -10,7 +10,7 @@ output "kms_key_alias" {
 }
 
 output "guardduty_detector_id" {
-  value = aws_guardduty_detector.cloudmart.id
+  value = var.enable_guardduty ? aws_guardduty_detector.cloudmart[0].id : null
 }
 
 output "waf_acl_arn" {

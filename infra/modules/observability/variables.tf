@@ -1,5 +1,7 @@
+# infra/modules/observability/variables.tf
+
 variable "environment" {
-  description = "Environment name (e.g., staging, production)"
+  description = "Environment name (staging or production)"
   type        = string
 }
 
@@ -9,11 +11,28 @@ variable "sqs_dlq_name" {
 }
 
 variable "rds_instance_identifier" {
-  description = "Identifier of the RDS instance to monitor"
+  description = "RDS instance identifier"
   type        = string
 }
 
 variable "dynamodb_table_name" {
-  description = "Name of the DynamoDB table to monitor"
+  description = "DynamoDB table name"
+  type        = string
+}
+
+# Added by Member 5
+variable "cluster_name" {
+  description = "EKS cluster name for ContainerInsights metrics"
+  type        = string
+  default     = "cloudmart-cluster"
+}
+
+variable "aws_region" {
+  description = "AWS region"
+  type        = string
+}
+
+variable "alert_email" {
+  description = "Email address to receive CloudWatch alarm notifications"
   type        = string
 }
