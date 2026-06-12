@@ -7,6 +7,16 @@ metadata:
   name: cloudmart-config
   namespace: cloudmart-prod
 data:
+  USER_DB_BACKEND: postgres
+  PRODUCT_DB_BACKEND: postgres
+  ORDER_DB_BACKEND: postgres
+
+  DB_NAME: cloudmart
+  DB_PORT: "5432"
+  DB_SSLMODE: disable
+  AWS_REGION: 'us-east-1'
+  DYNAMODB_TABLE: cloudmart-orders
+  SQS_QUEUE_URL: URL
   # Product Service
   PRODUCT_STORE_BACKEND: "memory"   # Change to dynamodb|firestore|cosmosdb
 
