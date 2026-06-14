@@ -21,6 +21,7 @@ COPY --from=builder /install /usr/local
 
 # Copy application code
 COPY app.py .
+COPY stores/ ./stores/
 
 # Switch to non-root user
 USER appuser

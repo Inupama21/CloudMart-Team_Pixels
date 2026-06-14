@@ -112,7 +112,7 @@ class InMemoryUserStore:
 
 class PostgresUserStore:
     """
-    PostgreSQL adapter — students implement this for the assignment.
+    PostgreSQL adapter — implemented in stores/postgres_store.py
 
     Set DB_BACKEND=postgres and provide:
       DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
@@ -125,15 +125,17 @@ class PostgresUserStore:
 
     def __init__(self):
         raise NotImplementedError(
-            "PostgreSQL store not implemented yet. "
-            "See the assignment brief Section 3.1 for guidance."
+            "Use create_user_store() factory — "
+            "implementation is in stores/postgres_store.py"
         )
 
 
 def create_user_store():
     backend = os.environ.get("DB_BACKEND", "memory").lower()
     if backend == "postgres":
-        return PostgresUserStore()
+        # Lazy import to avoid loading psycopg2 when using in-memory mode
+        from stores.postgres_store import PostgresUserStore as PGStore
+        return PGStore(SEED_USERS, logger)
     else:
         logger.info("Using in-memory user store (set DB_BACKEND=postgres for cloud DB)")
         return InMemoryUserStore()

@@ -39,6 +39,36 @@ spec:
             secretKeyRef:
               name: cloudmart-secrets
               key: Y2xvdWRtYXJ0LWRldi1zZWNyZXQtY2hhbmdlLWluLXByb2R1Y3Rpb24
+        - name: DB_HOST
+          valueFrom:
+            secretKeyRef:
+              name: cloudmart-secrets
+              key: DB_HOST
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: cloudmart-secrets
+              key: DB_USER
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: cloudmart-secrets
+              key: DB_PASSWORD
+        - name: DB_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: cloudmart-config
+              key: DB_NAME
+        - name: DB_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: cloudmart-config
+              key: DB_PORT
+        - name: DB_SSLMODE
+          valueFrom:
+            configMapKeyRef:
+              name: cloudmart-config
+              key: DB_SSLMODE
         resources:
           requests:
             cpu: 100m

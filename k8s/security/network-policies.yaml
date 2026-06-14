@@ -1,0 +1,84 @@
+# Allow frontend to reach product-service
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-frontend-to-product
+  namespace: cloudmart-prod
+spec:
+  podSelector:
+    matchLabels:
+      app: product-service
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: frontend
+      ports:
+        - port: 8001
+---
+# Allow order-service to reach product-service (stock check)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-order-to-product
+  namespace: cloudmart-prod
+spec:
+  podSelector:
+    matchLabels:
+      app: product-service
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: order-service
+      ports:
+        - port: 8001
+---
+# Allow frontend to reach order-service
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-frontend-to-order
+  namespace: cloudmart-prod
+spec:
+  podSelector:
+    matchLabels:
+      app: order-service
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: frontend
+      ports:
+        - port: 8002
+---
+# Allow frontend to reach user-service
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-frontend-to-user
+  namespace: cloudmart-prod
+spec:
+  podSelector:
+    matchLabels:
+      app: user-service
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: frontend
+      ports:
+        - port: 8003
+---
+# Allow DNS for all pods (without this nothing resolves hostnames)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: cloudmart-prod
+spec:
+  podSelector: {}
+  egress:
+    - ports:
+        - port: 53
+          protocol: UDP
