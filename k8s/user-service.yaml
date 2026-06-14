@@ -38,7 +38,7 @@ spec:
           valueFrom:
             secretKeyRef:
               name: cloudmart-secrets
-              key: Y2xvdWRtYXJ0LWRldi1zZWNyZXQtY2hhbmdlLWluLXByb2R1Y3Rpb24
+              key: JWT_SECRET
         - name: DB_HOST
           valueFrom:
             secretKeyRef:
