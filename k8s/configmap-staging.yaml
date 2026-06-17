@@ -1,42 +1,29 @@
-# ConfigMap for non-sensitive configuration
-# Sensitive values (DB passwords, JWT secrets) should go in Kubernetes Secrets
-# injected from your cloud provider's secret management service.
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: cloudmart-config
   namespace: cloudmart-staging
+
 data:
-  # ======================
-  # DB CONFIG
-  # ======================
-  DB_HOST: cloudmart-users-db-staging.cetoes2w8ujr.us-east-1.rds.amazonaws.com
-  DB_NAME: cloudmart-users-db-staging
-  DB_PORT: "5432"
-  DB_SSLMODE: require
   AWS_REGION: us-east-1
 
-  # ======================
-  # USER SERVICE
-  # ======================
+  DB_HOST: cloudmart-users-db-staging.cetoes2w8ujr.us-east-1.rds.amazonaws.com
+  DB_NAME: cloudmart
+  DB_PORT: "5432"
+  DB_SSLMODE: require
+
+
   USER_DB_BACKEND: postgres
 
-  # ======================
-  # PRODUCT SERVICE
-  # ======================
-  PRODUCT_STORE_BACKEND: dynamodb
   DYNAMODB_TABLE: cloudmart-products-staging
-  PRODUCT_SERVICE_URL: "http://product-service:8001"
+  PRODUCT_STORE_BACKEND: dynamodb
 
-  # ======================
-  # ORDER SERVICE
-  # ======================
+  PRODUCT_SERVICE_URL: http://product-service:8001
+  ORDER_SERVICE_URL: http://order-service:8002
+
   ORDER_QUEUE_BACKEND: sqs
   SQS_QUEUE_URL: https://sqs.us-east-1.amazonaws.com/537090271991/cloudmart-order-events-staging
-  ORDER_SERVICE_URL: "http://order-service:8002"
 
-  # Notification Service
   NOTIFICATION_QUEUE_BACKEND: sqs
-  NOTIFICATION_EMAIL_BACKEND: "console"
+  NOTIFICATION_EMAIL_BACKEND: console
   NOTIFICATION_POLL_INTERVAL: "5000"
-
