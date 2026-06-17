@@ -22,7 +22,7 @@ data:
   # PRODUCT SERVICE
   # ======================
   PRODUCT_STORE_BACKEND: dynamodb
-  DYNAMODB_TABLE: cloudmart-products
+  DYNAMODB_TABLE: cloudmart-products-production
 
   # ======================
   # ORDER SERVICE
