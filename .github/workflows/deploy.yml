@@ -234,26 +234,37 @@ jobs:
       - name: Post-Deploy Smoke Tests (Staging)
         run: |
           NAMESPACE="cloudmart-staging"
-          declare -A SERVICE_PORTS=( [frontend]="80" [product-service]="8001" [order-service]="8002" [user-service]="8003" [notification-service]="8004" )
-          declare -A SERVICE_PATHS=( [frontend]="/health" [product-service]="/ready" [order-service]="/ready" [user-service]="/ready" [notification-service]="/ready" )
-
-          for SERVICE in "${!SERVICE_PORTS[@]}"; do
-            PORT="${SERVICE_PORTS[$SERVICE]}"
-            PATH_URL="${SERVICE_PATHS[$SERVICE]}"
-            echo "Smoke testing $SERVICE on port $PORT at $PATH_URL..."
-            kubectl port-forward svc/$SERVICE 8888:$PORT -n $NAMESPACE &
-            PF_PID=$!
-            sleep 5
-            if curl -f -s http://localhost:8888$PATH_URL; then
-              echo "$SERVICE smoke test passed"
-            else
-              echo "$SERVICE smoke test FAILED"
-              kill $PF_PID
-              exit 1
+          
+          # 1. Fetch the AWS ALB Hostname dynamically from Kubernetes Ingress
+          echo "Retrieving ALB Ingress Hostname..."
+          for i in {1..20}; do
+            ALB_HOST=$(kubectl get ingress cloudmart-ingress -n $NAMESPACE -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true)
+            if [ -n "$ALB_HOST" ]; then
+              echo "ALB Hostname detected: $ALB_HOST"
+              break
             fi
-            kill $PF_PID
-            sleep 2
+            echo "Waiting for Ingress controller to assign ALB hostname..."
+            sleep 10
           done
+          
+          if [ -z "$ALB_HOST" ]; then
+            echo "Error: Failed to retrieve ALB hostname from Ingress."
+            exit 1
+          fi
+          
+          # 2. Smoke test public endpoints with retries (waiting for ALB to become active)
+          echo "Smoke testing public endpoints at http://$ALB_HOST..."
+          for i in {1..30}; do
+            if curl -f -s "http://$ALB_HOST/health" && curl -f -s "http://$ALB_HOST/api/products" > /dev/null; then
+              echo "Staging Smoke Test Passed!"
+              exit 0
+            fi
+            echo "Waiting for Load Balancer to active-route traffic... (Attempt $i/30)"
+            sleep 10
+          done
+          
+          echo "Error: Staging Smoke Test FAILED"
+          exit 1
 
 # -----------------------------
 # 5. MANUAL APPROVAL FOR PROD
@@ -355,23 +366,34 @@ jobs:
       - name: Post-Deploy Smoke Tests (Production)
         run: |
           NAMESPACE="cloudmart-prod"
-          declare -A SERVICE_PORTS=( [frontend]="80" [product-service]="8001" [order-service]="8002" [user-service]="8003" [notification-service]="8004" )
-          declare -A SERVICE_PATHS=( [frontend]="/health" [product-service]="/ready" [order-service]="/ready" [user-service]="/ready" [notification-service]="/ready" )
-
-          for SERVICE in "${!SERVICE_PORTS[@]}"; do
-            PORT="${SERVICE_PORTS[$SERVICE]}"
-            PATH_URL="${SERVICE_PATHS[$SERVICE]}"
-            echo "Smoke testing $SERVICE..."
-            kubectl port-forward svc/$SERVICE 8888:$PORT -n $NAMESPACE &
-            PF_PID=$!
-            sleep 5
-            if curl -f -s http://localhost:8888$PATH_URL; then
-              echo "$SERVICE passed"
-            else
-              echo "$SERVICE FAILED"
-              kill $PF_PID
-              exit 1
+          
+          # 1. Fetch the AWS ALB Hostname dynamically from Kubernetes Ingress
+          echo "Retrieving ALB Ingress Hostname..."
+          for i in {1..20}; do
+            ALB_HOST=$(kubectl get ingress cloudmart-ingress -n $NAMESPACE -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true)
+            if [ -n "$ALB_HOST" ]; then
+              echo "ALB Hostname detected: $ALB_HOST"
+              break
             fi
-            kill $PF_PID
-            sleep 2
+            echo "Waiting for Ingress controller to assign ALB hostname..."
+            sleep 10
           done
+          
+          if [ -z "$ALB_HOST" ]; then
+            echo "Error: Failed to retrieve ALB hostname from Ingress."
+            exit 1
+          fi
+          
+          # 2. Smoke test public endpoints with retries (waiting for ALB to become active)
+          echo "Smoke testing public endpoints at http://$ALB_HOST..."
+          for i in {1..30}; do
+            if curl -f -s "http://$ALB_HOST/health" && curl -f -s "http://$ALB_HOST/api/products" > /dev/null; then
+              echo "Production Smoke Test Passed!"
+              exit 0
+            fi
+            echo "Waiting for Load Balancer to active-route traffic... (Attempt $i/30)"
+            sleep 10
+          done
+          
+          echo "Error: Production Smoke Test FAILED"
+          exit 1

@@ -1,39 +1,40 @@
-# ConfigMap for non-sensitive configuration
-# Sensitive values (DB passwords, JWT secrets) should go in Kubernetes Secrets
-# injected from your cloud provider's secret management service.
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: cloudmart-config
   namespace: cloudmart-prod
-data:
-  USER_DB_BACKEND: postgres
-  PRODUCT_DB_BACKEND: postgres
-  ORDER_DB_BACKEND: postgres
 
+data:
+  # ======================
+  # GLOBAL DB CONFIG
+  # ======================
   DB_NAME: cloudmart
   DB_PORT: "5432"
-  DB_SSLMODE: disable
-  AWS_REGION: 'us-east-1'
-  DYNAMODB_TABLE: cloudmart-orders
-  SQS_QUEUE_URL: URL
-  # Product Service
-  PRODUCT_STORE_BACKEND: "dynamodb"
-  DYNAMODB_TABLE: "cloudmart-products-dev"
-  AWS_REGION: "us-east-1"
+  DB_SSLMODE: require
+  AWS_REGION: us-east-1
 
-  # Order Service
-  PRODUCT_SERVICE_URL: "http://product-service:8001"
-  ORDER_QUEUE_BACKEND: "sqs"
+  # ======================
+  # USER SERVICE
+  # ======================
+  USER_DB_BACKEND: postgres
 
-  # Notification Service
-  ORDER_SERVICE_URL: "http://order-service:8002"
-  NOTIFICATION_QUEUE_BACKEND: "sqs"
-  NOTIFICATION_EMAIL_BACKEND: "console"
+  # ======================
+  # PRODUCT SERVICE
+  # ======================
+  PRODUCT_STORE_BACKEND: dynamodb
+  DYNAMODB_TABLE: cloudmart-products
+
+  # ======================
+  # ORDER SERVICE
+  # ======================
+  ORDER_QUEUE_BACKEND: sqs
+  SQS_QUEUE_URL: https://sqs.us-east-1.amazonaws.com/537090271991/cloudmart-order-events-production
+  PRODUCT_SERVICE_URL: http://product-service:8001
+
+  # ======================
+  # NOTIFICATION SERVICE
+  # ======================
+  ORDER_SERVICE_URL: http://order-service:8002
+  NOTIFICATION_QUEUE_BACKEND: sqs
+  NOTIFICATION_EMAIL_BACKEND: console
   NOTIFICATION_POLL_INTERVAL: "5000"
-
-  # User Service
-  USER_DB_BACKEND: "postgres"
-  DB_PORT: "5432"
-  DB_NAME: "cloudmart"
-  DB_SSLMODE: "require"
