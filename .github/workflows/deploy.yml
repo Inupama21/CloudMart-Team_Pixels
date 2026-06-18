@@ -6,7 +6,7 @@ on:
       - main
       - develop
       - 'feature/*'
-      - 'ci/*'
+      # - 'ci/*'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -272,7 +272,7 @@ jobs:
   approve:
     name: Approve Production
     needs: [build, validate]
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/ci/cd-maheepa'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -284,7 +284,7 @@ jobs:
   deploy-prod:
     name: Deploy to Production
     needs: approve
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/ci/cd-maheepa'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 
     steps:
