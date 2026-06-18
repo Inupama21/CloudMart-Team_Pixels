@@ -1,5 +1,5 @@
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
 metadata:
   name: product-service
   labels:
@@ -9,21 +9,14 @@ spec:
   selector:
     matchLabels:
       app: product-service
-  strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 0
   template:
     metadata:
       labels:
         app: product-service
     spec:
-      # TODO: Add serviceAccountName for workload identity
-      serviceAccountName: product-service-sa
       containers:
       - name: product-service
-        image: 537090271991.dkr.ecr.us-east-1.amazonaws.com/product-service:latest   # Replace with your registry URI
+        image: <YOUR-REGISTRY>/product-service:latest
         ports:
         - containerPort: 8001
         env:
@@ -34,16 +27,6 @@ spec:
             configMapKeyRef:
               name: cloudmart-config
               key: PRODUCT_STORE_BACKEND
-        - name: DYNAMODB_TABLE
-          valueFrom:
-            configMapKeyRef:
-              name: cloudmart-config
-              key: DYNAMODB_TABLE
-        - name: AWS_REGION
-          valueFrom:
-            configMapKeyRef:
-              name: cloudmart-config
-              key: AWS_REGION
         resources:
           requests:
             cpu: 100m
@@ -63,11 +46,38 @@ spec:
             port: 8001
           initialDelaySeconds: 10
           periodSeconds: 30
+  strategy:
+    canary:
+      stableService: product-service
+      canaryService: product-service-canary
+      analysis:
+        templates:
+          - templateName: product-error-rate
+        args:
+          - name: service-name
+            value: product-service-canary
+      steps:
+        - setWeight: 10
+        - pause: { duration: 1m }
+        - setWeight: 50
+        - pause: { duration: 1m }
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: product-service
+spec:
+  selector:
+    app: product-service
+  ports:
+  - port: 8001
+    targetPort: 8001
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: product-service-canary
 spec:
   selector:
     app: product-service
@@ -82,8 +92,8 @@ metadata:
   name: product-service-hpa
 spec:
   scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
+    apiVersion: argoproj.io/v1alpha1
+    kind: Rollout
     name: product-service
   minReplicas: 2
   maxReplicas: 6
@@ -94,3 +104,21 @@ spec:
       target:
         type: Utilization
         averageUtilization: 60
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: product-error-rate
+spec:
+  metrics:
+  - name: error-rate
+    interval: 10s
+    successCondition: result[0] < 0.01
+    failureLimit: 1
+    provider:
+      prometheus:
+        address: http://prometheus-operated.monitoring.svc.cluster.local:9090
+        query: |
+          sum(rate(http_requests_total{status=~"5.*",app="product-service"}[1m]))
+          /
+          sum(rate(http_requests_total{app="product-service"}[1m]))

@@ -2,7 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: frontend
-  namespace: cloudmart-prod
   labels:
     app: frontend
     Project: cloudmart
@@ -28,7 +27,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: 537090271991.dkr.ecr.us-east-1.amazonaws.com/cloudmart-frontend:latest
+          image: 537090271991.dkr.ecr.us-east-1.amazonaws.com/frontend:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 80
