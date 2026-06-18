@@ -195,4 +195,24 @@ cloudmart-starter/
 │   └── network-policy.yaml
 └── docs/adr/                   # Architecture Decision Records go here
 ```
+## Cloud Provider
 
+**Chosen provider:** _[Your group fills this in: AWS / GCP / Azure]_
+
+## Team Members
+
+| Name | Student ID | Responsibilities |
+|------|-----------|-----------------|
+| | | |
+| | | |
+| | | |
+| | | |
+| | | |
+
+## AI Tool Disclosure
+
+_[If your group used GitHub Copilot, ChatGPT, Claude, or any AI assistant, disclose here: which tools, for which tasks, and what review process you applied.]_
+
+---
+
+*IS 4630 Cloud Infrastructure Management | University of Moratuwa | Academic Year 2025/2026*
