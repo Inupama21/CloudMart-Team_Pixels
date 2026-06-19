@@ -122,5 +122,5 @@ variable "monthly_budget_usd" {
 variable "budget_notification_emails" {
   description = "Recipients for forecasted and actual AWS Budget alerts"
   type        = list(string)
-  default     = ["team-pixels@example.com"]
+  default     = ["kavisekarais.21@uom.lk"]
 }

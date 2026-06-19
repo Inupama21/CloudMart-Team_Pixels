@@ -151,7 +151,10 @@ resource "aws_cloudwatch_dashboard" "main" {
     widgets = [
       {
         type   = "metric"
-        x = 0; y = 0; width = 12; height = 6
+        x      = 0
+        y      = 0
+        width  = 12
+        height = 6
         properties = {
           title   = "Pod CPU by Service"
           period  = 60
@@ -166,7 +169,10 @@ resource "aws_cloudwatch_dashboard" "main" {
       },
       {
         type   = "metric"
-        x = 12; y = 0; width = 12; height = 6
+        x      = 12
+        y      = 0
+        width  = 12
+        height = 6
         properties = {
           title   = "Pod Memory by Service"
           period  = 60
@@ -181,7 +187,10 @@ resource "aws_cloudwatch_dashboard" "main" {
       },
       {
         type   = "metric"
-        x = 0; y = 6; width = 12; height = 6
+        x      = 0
+        y      = 6
+        width  = 12
+        height = 6
         properties = {
           title   = "SQS Queue Depth"
           period  = 60
@@ -194,7 +203,10 @@ resource "aws_cloudwatch_dashboard" "main" {
       },
       {
         type   = "metric"
-        x = 12; y = 6; width = 12; height = 6
+        x      = 12
+        y      = 6
+        width  = 12
+        height = 6
         properties = {
           title   = "RDS CPU"
           period  = 60
