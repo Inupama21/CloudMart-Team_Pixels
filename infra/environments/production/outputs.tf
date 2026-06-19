@@ -97,3 +97,68 @@ output "alerts_sns_topic_arn" {
   description = "SNS topic ARN for CloudWatch alarms"
   value       = module.observability.sns_topic_arn
 }
+
+output "monthly_budget_name" {
+  description = "AWS Budget monitoring tagged CloudMart spend"
+  value       = module.cost_management.budget_name
+}
+
+output "velero_bucket_name" {
+  description = "S3 bucket for Kubernetes backups"
+  value       = module.disaster_recovery.velero_bucket_name
+}
+
+output "velero_role_arn" {
+  description = "IRSA role for Velero"
+  value       = module.disaster_recovery.velero_role_arn
+}
+
+output "database_kms_key_arn" {
+  description = "KMS key protecting RDS and DynamoDB"
+  value       = module.database.database_kms_key_arn
+}
+
+output "eks_cluster_name" {
+  value = module.eks.cluster_name
+}
+
+output "eks_node_role_arn" {
+  description = "Restricted EKS worker-node role"
+  value       = module.eks.node_role_arn
+}
+
+output "eks_oidc_provider_url" {
+  description = "Use this value for staging workload identity configuration"
+  value       = module.eks.oidc_provider_url
+}
+
+output "data_subnet_ids" {
+  value = module.networking.data_subnet_ids
+}
+
+output "vpc_flow_log_group" {
+  value = module.networking.flow_log_group_name
+}
+
+output "bastion_instance_id" {
+  value = module.networking.bastion_instance_id
+}
+
+output "alb_security_group_id" {
+  description = "Set this as the ALB_SECURITY_GROUP_ID GitHub Actions repository variable"
+  value       = module.networking.alb_security_group_id
+}
+
+output "application_secret_name" {
+  value = module.security.application_secret_name
+}
+
+output "private_route_table_ids" {
+  description = "Use these values when configuring staging VPC peering"
+  value       = module.networking.private_route_table_ids
+}
+
+output "eks_node_security_group_id" {
+  description = "Use this value for staging RDS access from the shared EKS cluster"
+  value       = module.networking.eks_node_security_group_id
+}

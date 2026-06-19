@@ -56,8 +56,8 @@ infra/
     ├── database/               # RDS PostgreSQL, DynamoDB
     ├── messaging/              # SQS queue + DLQ
     ├── observability/          # CloudWatch log groups, alarms, dashboard
-    ├── ecr/                    # ECR repositories (placeholder)
-    └── eks/                    # EKS cluster (placeholder)
+    ├── ecr/                    # ECR repositories
+    └── eks/                    # EKS cluster, hardened nodes, OIDC and audit logs
 ```
 
 ---
@@ -131,31 +131,23 @@ data:
   AWS_REGION: "us-east-1"
 ```
 
-### 2. Update Secrets (`k8s/secrets.yaml`)
+### 2. Install the Secrets Store CSI Driver
 
-Inject the actual sensitive values:
-```yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: cloudmart-secrets
-  namespace: cloudmart-prod
-type: Opaque
-stringData:
-  JWT_SECRET: "your-super-secret-jwt-key"  # Change to a strong key
-  DB_HOST: "cloudmart-users-db-staging.xxxxxx.us-east-1.rds.amazonaws.com"  # Replace with output (without the :5432 port suffix)
-  DB_USER: "cloudmart"
-  DB_PASSWORD: "your-auto-generated-password"  # Replace with output
-  SQS_QUEUE_URL: "https://sqs.us-east-1.amazonaws.com/123456789012/cloudmart-order-events-staging"  # Replace with output
-```
+Sensitive values are stored in AWS Secrets Manager by Terraform. Do not create or commit a
+plaintext Kubernetes Secret. Install the CSI driver and AWS provider as documented in
+`docs/security/NETWORKING_AND_SECURITY.md`; the CI/CD workflow also performs this installation.
+
+Apply the environment service accounts and SecretProviderClass after replacing their template
+values, or allow the CI/CD workflow to render them automatically.
 
 ### 3. Deploy Kubernetes Resources
 
 Apply the Kubernetes descriptors to your EKS cluster:
 ```bash
 kubectl apply -f k8s/namespace.yaml
-kubectl apply -f k8s/configmap.yaml
-kubectl apply -f k8s/secrets.yaml
+kubectl apply -f k8s/configmap-prod.yaml
+kubectl apply -f k8s/security/network-policy-default-deny.yaml
+kubectl apply -f k8s/security/network-policies.yaml
 kubectl apply -f k8s/user-service.yaml
 kubectl apply -f k8s/product-service.yaml
 kubectl apply -f k8s/order-service.yaml
