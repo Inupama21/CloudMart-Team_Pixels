@@ -35,7 +35,7 @@ infra/
 │       ├── variables.tf
 │       └── outputs.tf
 │
-└── enviornments/
+└── environments/
     ├── staging/                        # Staging: SPOT nodes, single-AZ DB, smaller sizes
     │   ├── backend.tf                  # Remote state config (S3 key: staging/)
     │   ├── main.tf                     # Composes all modules
@@ -72,14 +72,14 @@ cp terraform.tfvars.example terraform.tfvars
 # Edit terraform.tfvars: set your AWS account ID in state_bucket_name
 terraform init
 terraform apply
-# Note the outputs – paste bucket name into enviornments/*/backend.tf
+# Note the outputs – paste bucket name into environments/*/backend.tf
 ```
 
 ### Step 2 – Configure your environment
 
 ```bash
 # For staging:
-cd infra/enviornments/staging
+cd infra/environments/staging
 cp terraform.tfvars.example terraform.tfvars
 # Edit terraform.tfvars with your DB credentials
 ```
@@ -131,7 +131,7 @@ kubectl get nodes
 | RDS Multi-AZ | ❌ | ✅ |
 | RDS instance | `db.t3.micro` | `db.t3.small` |
 | RDS backup | 7 days | 7 days |
-| EKS API endpoint | Public | Private |
+| EKS API endpoint | Shared production-owned cluster | Public + private; restrict public CIDRs |
 | Deletion protection | ❌ | ✅ |
 
 ---
@@ -139,7 +139,7 @@ kubectl get nodes
 ## Adding a New Module
 
 1. Create `infra/modules/<name>/main.tf`, `variables.tf`, `outputs.tf`
-2. Add a `module "<name>"` block in both `enviornments/staging/main.tf` and `enviornments/production/main.tf`
+2. Add a `module "<name>"` block in both `environments/staging/main.tf` and `environments/production/main.tf`
 3. Expose relevant outputs in both environments
 
 ---

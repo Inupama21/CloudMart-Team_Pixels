@@ -13,6 +13,12 @@ variable "environment" {
   default = "production"
 }
 
+variable "cluster_name" {
+  description = "Single EKS cluster hosting production and staging namespaces"
+  type        = string
+  default     = "cloudmart-cluster"
+}
+
 variable "team" {
   description = "Team tag applied to all resources"
   type        = string
@@ -41,6 +47,11 @@ variable "private_subnet_cidrs" {
   default = ["10.0.10.0/24", "10.0.11.0/24", "10.0.12.0/24"]
 }
 
+variable "data_subnet_cidrs" {
+  type    = list(string)
+  default = ["10.0.20.0/24", "10.0.21.0/24", "10.0.22.0/24"]
+}
+
 variable "availability_zones" {
   type    = list(string)
   default = ["us-east-1a", "us-east-1b", "us-east-1c"]
@@ -60,11 +71,6 @@ variable "account_id" {
   type        = string
 }
 
-variable "oidc_url" {
-  description = "EKS OIDC Provider URL without https://"
-  type        = string
-}
-
 variable "alb_arn" {
   description = "ALB ARN for WAF association — leave empty until ALB is created by Member 6"
   type        = string
@@ -80,7 +86,31 @@ variable "alert_email" {
 variable "enable_guardduty" {
   description = "Enable GuardDuty"
   type        = bool
-  default     = false
+  default     = true
+}
+
+variable "enable_bastion" {
+  description = "Create an SSM-managed bastion"
+  type        = bool
+  default     = true
+}
+
+variable "bastion_allowed_cidrs" {
+  description = "Optional SSH CIDRs; leave empty to require SSM Session Manager"
+  type        = list(string)
+  default     = []
+}
+
+variable "cluster_public_access_cidrs" {
+  description = "CIDRs allowed to reach the public EKS API endpoint"
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
+
+variable "node_instance_types" {
+  description = "EKS managed-node instance types"
+  type        = list(string)
+  default     = ["t3.medium"]
 }
 
 variable "monthly_budget_usd" {

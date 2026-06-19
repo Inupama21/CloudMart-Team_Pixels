@@ -13,6 +13,12 @@ variable "eks_security_group_id" {
   type        = string
 }
 
+variable "bastion_security_group_id" {
+  description = "Optional bastion security group allowed to administer PostgreSQL"
+  type        = string
+  default     = null
+}
+
 variable "environment" {
   description = "Environment name (e.g., staging, production)"
   type        = string

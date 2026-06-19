@@ -214,6 +214,7 @@ cloudmart-starter/
 
 - [Cost management and FinOps](docs/finops/COST_MANAGEMENT.md)
 - [Disaster recovery plan](docs/dr/DISASTER_RECOVERY_PLAN.md)
+- [Networking and security](docs/security/NETWORKING_AND_SECURITY.md)
 - [Kubernetes node instance ADR](docs/adr/ADR-001-kubernetes-node-instance-selection.md)
 
 ## AI Tool Disclosure

@@ -13,6 +13,12 @@ variable "environment" {
   default = "staging"
 }
 
+variable "cluster_name" {
+  description = "Shared production-owned EKS cluster name"
+  type        = string
+  default     = "cloudmart-cluster"
+}
+
 variable "team" {
   description = "Team tag applied to all resources"
   type        = string
@@ -39,6 +45,32 @@ variable "public_subnet_cidrs" {
 variable "private_subnet_cidrs" {
   type    = list(string)
   default = ["10.1.10.0/24", "10.1.11.0/24"]
+}
+
+variable "data_subnet_cidrs" {
+  type    = list(string)
+  default = ["10.1.20.0/24", "10.1.21.0/24"]
+}
+
+variable "production_vpc_id" {
+  description = "VPC ID output from the production environment"
+  type        = string
+}
+
+variable "production_vpc_cidr" {
+  description = "Production VPC CIDR"
+  type        = string
+  default     = "10.0.0.0/16"
+}
+
+variable "production_private_route_table_ids" {
+  description = "Production application route table IDs"
+  type        = list(string)
+}
+
+variable "production_eks_security_group_id" {
+  description = "Production EKS node security group ID"
+  type        = string
 }
 
 variable "availability_zones" {

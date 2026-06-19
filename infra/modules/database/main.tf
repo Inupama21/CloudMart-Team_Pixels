@@ -21,19 +21,15 @@ resource "aws_security_group" "rds" {
     security_groups = [var.eks_security_group_id]
   }
 
-  ingress {
-    description     = "Allow PostgreSQL access from VPC (for Fargate pods)"
-    from_port       = 5432
-    to_port         = 5432
-    protocol        = "tcp"
-    cidr_blocks     = ["10.0.0.0/16"]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+  dynamic "ingress" {
+    for_each = var.bastion_security_group_id == null ? [] : [var.bastion_security_group_id]
+    content {
+      description     = "Administrative PostgreSQL access from the SSM bastion"
+      from_port       = 5432
+      to_port         = 5432
+      protocol        = "tcp"
+      security_groups = [ingress.value]
+    }
   }
 
   tags = {
@@ -46,6 +42,22 @@ resource "random_password" "db_password" {
   length           = 16
   special          = true
   override_special = "!#$%&*()-_=+[]{}<>:?"
+}
+
+resource "aws_db_parameter_group" "postgres" {
+  name   = "cloudmart-postgres15-${var.environment}"
+  family = "postgres15"
+
+  parameter {
+    name         = "rds.force_ssl"
+    value        = "1"
+    apply_method = "pending-reboot"
+  }
+
+  tags = {
+    Environment = var.environment
+    Service     = "user-service"
+  }
 }
 
 resource "aws_kms_key" "database" {
@@ -69,7 +81,7 @@ resource "aws_db_instance" "users_db" {
   db_name              = "cloudmart"
   username             = "cloudmart"
   password             = var.db_password != null && var.db_password != "" ? var.db_password : random_password.db_password.result
-  parameter_group_name = "default.postgres15"
+  parameter_group_name = aws_db_parameter_group.postgres.name
   
   db_subnet_group_name   = aws_db_subnet_group.rds.name
   vpc_security_group_ids = [aws_security_group.rds.id]

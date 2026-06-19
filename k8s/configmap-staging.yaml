@@ -7,7 +7,6 @@ metadata:
 data:
   AWS_REGION: us-east-1
 
-  DB_HOST: cloudmart-users-db-staging.cetoes2w8ujr.us-east-1.rds.amazonaws.com
   DB_NAME: cloudmart
   DB_PORT: "5432"
   DB_SSLMODE: require

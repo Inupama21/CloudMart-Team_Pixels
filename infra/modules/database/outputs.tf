@@ -29,6 +29,11 @@ output "rds_instance_identifier" {
   value       = aws_db_instance.users_db.identifier
 }
 
+output "rds_address" {
+  description = "RDS hostname without the port suffix"
+  value       = aws_db_instance.users_db.address
+}
+
 output "database_kms_key_arn" {
   description = "Customer-managed KMS key used by RDS and DynamoDB"
   value       = aws_kms_key.database.arn

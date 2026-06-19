@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: user-service
+  namespace: cloudmart-prod
   labels:
     app: user-service
 spec:
@@ -19,13 +20,20 @@ spec:
       labels:
         app: user-service
     spec:
-      # TODO: Add serviceAccountName for workload identity
       serviceAccountName: user-service-sa
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: user-service
         image: 537090271991.dkr.ecr.us-east-1.amazonaws.com/user-service:latest
         ports:
         - containerPort: 8003
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+          runAsNonRoot: true
         env:
         - name: PORT
           value: "8003"
@@ -69,6 +77,10 @@ spec:
             configMapKeyRef:
               name: cloudmart-config
               key: DB_SSLMODE
+        volumeMounts:
+        - name: application-secrets
+          mountPath: /mnt/secrets-store
+          readOnly: true
         resources:
           requests:
             cpu: 100m
@@ -88,11 +100,19 @@ spec:
             port: 8003
           initialDelaySeconds: 10
           periodSeconds: 30
+      volumes:
+      - name: application-secrets
+        csi:
+          driver: secrets-store.csi.k8s.io
+          readOnly: true
+          volumeAttributes:
+            secretProviderClass: cloudmart-application-secret
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: user-service
+  namespace: cloudmart-prod
 spec:
   selector:
     app: user-service

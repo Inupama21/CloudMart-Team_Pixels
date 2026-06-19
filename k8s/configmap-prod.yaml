@@ -8,7 +8,6 @@ data:
   # ======================
   # DB CONFIG
   # ======================
-  DB_HOST: cloudmart-users-db-production.cetoes2w8ujr.us-east-1.rds.amazonaws.com
   DB_NAME: cloudmart
   DB_PORT: "5432"
   DB_SSLMODE: require

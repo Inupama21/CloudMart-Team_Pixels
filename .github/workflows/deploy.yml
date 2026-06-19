@@ -18,8 +18,12 @@ permissions:
 
 env:
   AWS_REGION: us-east-1
+  AWS_ACCOUNT_ID: "537090271991"
   AWS_ROLE_ARN: arn:aws:iam::537090271991:role/github-actions-cloudmart-deploy-role
   CLUSTER_NAME: cloudmart-cluster
+  ACM_CERTIFICATE_ARN: ${{ vars.ACM_CERTIFICATE_ARN }}
+  WAF_ACL_ARN: ${{ vars.WAF_ACL_ARN }}
+  ALB_SECURITY_GROUP_ID: ${{ vars.ALB_SECURITY_GROUP_ID }}
 
 jobs:
 
@@ -197,6 +201,9 @@ jobs:
         with:
           version: 'latest'
 
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
       - name: Update kubeconfig
         run: aws eks update-kubeconfig --name ${{ env.CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
 
@@ -207,10 +214,46 @@ jobs:
           NAMESPACE="cloudmart-staging"
           SERVICES="frontend user-service product-service order-service notification-service"
 
-          # Apply namespace + configmap first (with namespace substitution)
-          sed "s|namespace: cloudmart-prod|namespace: $NAMESPACE|g" k8s/namespace.yaml | kubectl apply -f -
-          sed "s|namespace: cloudmart-prod|namespace: $NAMESPACE|g" k8s/configmap-staging.yaml | kubectl apply -f -
-          kubectl apply -f k8s/ingress-staging.yaml
+          kubectl apply -f k8s/namespace.yaml
+
+          helm repo add secrets-store-csi-driver https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts --force-update
+          helm repo add aws-secrets-manager https://aws.github.io/secrets-store-csi-driver-provider-aws --force-update
+          helm repo update
+          helm upgrade --install csi-secrets-store secrets-store-csi-driver/secrets-store-csi-driver \
+            --namespace kube-system \
+            --set syncSecret.enabled=true \
+            --set enableSecretRotation=true
+          helm upgrade --install secrets-store-csi-driver-provider-aws \
+            aws-secrets-manager/secrets-store-csi-driver-provider-aws \
+            --namespace kube-system
+
+          sed \
+            -e "s|namespace: cloudmart-prod|namespace: $NAMESPACE|g" \
+            -e "s|AWS_ACCOUNT_ID|${AWS_ACCOUNT_ID}|g" \
+            -e "s|ROLE_ENVIRONMENT|staging|g" \
+            k8s/security/service-accounts.yaml | kubectl apply -f -
+
+          sed \
+            -e "s|namespace: cloudmart-prod|namespace: $NAMESPACE|g" \
+            -e "s|SECRET_NAME|cloudmart/staging/application|g" \
+            k8s/security/secret-provider-class.yaml | kubectl apply -f -
+
+          for POLICY in \
+            k8s/security/network-policy-default-deny.yaml \
+            k8s/security/network-policies.yaml \
+            k8s/security/notification-network-policy.yaml \
+            k8s/security/order-egress-policy.yaml \
+            k8s/security/product-egress-policy.yaml \
+            k8s/security/user-egress-policy.yaml; do
+            sed "s|namespace: cloudmart-prod|namespace: $NAMESPACE|g" "$POLICY" | kubectl apply -f -
+          done
+
+          kubectl apply -f k8s/configmap-staging.yaml
+          sed \
+            -e "s|ACM_CERTIFICATE_ARN|${ACM_CERTIFICATE_ARN}|g" \
+            -e "s|WAF_ACL_ARN|${WAF_ACL_ARN}|g" \
+            -e "s|ALB_SECURITY_GROUP_ID|${ALB_SECURITY_GROUP_ID}|g" \
+            k8s/ingress-staging.yaml | kubectl apply -f -
 
           for SERVICE in $SERVICES; do
             MANIFEST_FILE="k8s/$SERVICE.yaml"
@@ -306,6 +349,9 @@ jobs:
         with:
           version: 'latest'
 
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
       - name: Update kubeconfig
         run: aws eks update-kubeconfig --name ${{ env.CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
 
@@ -316,8 +362,42 @@ jobs:
           NAMESPACE="cloudmart-prod"
 
           kubectl apply -f k8s/namespace.yaml
+
+          helm repo add secrets-store-csi-driver https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts --force-update
+          helm repo add aws-secrets-manager https://aws.github.io/secrets-store-csi-driver-provider-aws --force-update
+          helm repo update
+          helm upgrade --install csi-secrets-store secrets-store-csi-driver/secrets-store-csi-driver \
+            --namespace kube-system \
+            --set syncSecret.enabled=true \
+            --set enableSecretRotation=true
+          helm upgrade --install secrets-store-csi-driver-provider-aws \
+            aws-secrets-manager/secrets-store-csi-driver-provider-aws \
+            --namespace kube-system
+
+          sed \
+            -e "s|AWS_ACCOUNT_ID|${AWS_ACCOUNT_ID}|g" \
+            -e "s|ROLE_ENVIRONMENT|production|g" \
+            k8s/security/service-accounts.yaml | kubectl apply -f -
+
+          sed "s|SECRET_NAME|cloudmart/production/application|g" \
+            k8s/security/secret-provider-class.yaml | kubectl apply -f -
+
+          for POLICY in \
+            k8s/security/network-policy-default-deny.yaml \
+            k8s/security/network-policies.yaml \
+            k8s/security/notification-network-policy.yaml \
+            k8s/security/order-egress-policy.yaml \
+            k8s/security/product-egress-policy.yaml \
+            k8s/security/user-egress-policy.yaml; do
+            kubectl apply -f "$POLICY"
+          done
+
           kubectl apply -f k8s/configmap-prod.yaml
-          kubectl apply -f k8s/ingress-prod.yaml
+          sed \
+            -e "s|ACM_CERTIFICATE_ARN|${ACM_CERTIFICATE_ARN}|g" \
+            -e "s|WAF_ACL_ARN|${WAF_ACL_ARN}|g" \
+            -e "s|ALB_SECURITY_GROUP_ID|${ALB_SECURITY_GROUP_ID}|g" \
+            k8s/ingress-prod.yaml | kubectl apply -f -
 
           for SERVICE in frontend user-service product-service order-service notification-service; do
             MANIFEST_FILE="k8s/$SERVICE.yaml"

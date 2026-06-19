@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: frontend
+  namespace: cloudmart-prod
   labels:
     app: frontend
     Project: cloudmart
@@ -25,6 +26,10 @@ spec:
         Environment: prod
         Team: Team-Pixels
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: frontend
           image: 537090271991.dkr.ecr.us-east-1.amazonaws.com/frontend:latest
@@ -32,6 +37,11 @@ spec:
           ports:
             - containerPort: 80
               name: http
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            runAsNonRoot: true
           resources:
             requests:
               cpu: "100m"
@@ -76,31 +86,3 @@ spec:
       protocol: TCP
       port: 80
       targetPort: 80
-
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: cloudmart-ingress
-  namespace: cloudmart-prod
-  labels:
-    app: frontend
-    Project: cloudmart
-    Environment: prod
-    Team: Team-Pixels
-  annotations:
-    alb.ingress.kubernetes.io/scheme: internet-facing
-    alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/tags: Project=cloudmart,Environment=prod,Team=Team-Pixels,Owner=Member6
-spec:
-  ingressClassName: alb
-  rules:
-    - http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: frontend
-                port:
-                  number: 80
