@@ -1,0 +1,28 @@
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: cloudmart-prod-daily
+  namespace: velero
+spec:
+  schedule: "0 2 * * *"
+  template:
+    includedNamespaces:
+      - cloudmart-prod
+    snapshotVolumes: true
+    storageLocation: default
+    ttl: 720h0m0s
+---
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: cloudmart-staging-daily
+  namespace: velero
+spec:
+  schedule: "30 2 * * *"
+  template:
+    includedNamespaces:
+      - cloudmart-staging
+    snapshotVolumes: true
+    storageLocation: default
+    ttl: 336h0m0s
+

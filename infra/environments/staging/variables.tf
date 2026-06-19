@@ -13,6 +13,18 @@ variable "environment" {
   default = "staging"
 }
 
+variable "team" {
+  description = "Team tag applied to all resources"
+  type        = string
+  default     = "Team-Pixels"
+}
+
+variable "owner_email" {
+  description = "Owner tag applied to all resources"
+  type        = string
+  default     = "team-pixels@example.com"
+}
+
 # ── Network
 variable "vpc_cidr" {
   type    = string
@@ -74,4 +86,16 @@ variable "enable_guardduty" {
   description = "Enable GuardDuty"
   type        = bool
   default     = false
+}
+
+variable "monthly_budget_usd" {
+  description = "Staging monthly cost threshold"
+  type        = number
+  default     = 50
+}
+
+variable "budget_notification_emails" {
+  description = "Recipients for forecasted and actual AWS Budget alerts"
+  type        = list(string)
+  default     = ["team-pixels@example.com"]
 }

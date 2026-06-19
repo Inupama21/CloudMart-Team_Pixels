@@ -25,6 +25,8 @@ locals {
   common_tags = {
     Project     = var.project
     Environment = var.environment
+    Team        = var.team
+    Owner       = var.owner_email
     ManagedBy   = "terraform"
     CostCenter  = "cloudmart-production"
   }
@@ -53,6 +55,10 @@ module "database" {
   eks_security_group_id = module.networking.eks_node_security_group_id
   environment           = var.environment
   db_password           = var.db_password
+  multi_az              = true
+  backup_retention_days = 7
+  deletion_protection   = true
+  skip_final_snapshot   = false
 }
 
 # ── Messaging (SQS) ──────────────────────────────────────────
@@ -87,5 +93,27 @@ module "security" {
   sqs_queue_arn       = module.messaging.sqs_queue_arn
   environment         = var.environment
   team_id             = var.project
-  enable_guardduty = var.enable_guardduty
+  enable_guardduty    = var.enable_guardduty
+}
+
+# -- Cost management ----------------------------------------------------------
+module "cost_management" {
+  source = "../../modules/cost_management"
+
+  project             = var.project
+  environment         = var.environment
+  monthly_budget_usd  = var.monthly_budget_usd
+  notification_emails = var.budget_notification_emails
+}
+
+# -- Disaster recovery --------------------------------------------------------
+module "disaster_recovery" {
+  source = "../../modules/disaster_recovery"
+
+  project               = var.project
+  environment           = var.environment
+  aws_region            = var.aws_region
+  account_id            = var.account_id
+  oidc_url              = var.oidc_url
+  backup_retention_days = 30
 }

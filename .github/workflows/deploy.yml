@@ -363,6 +363,14 @@ jobs:
             kubectl rollout status deployment/$SERVICE -n $NAMESPACE --timeout=5m
           done
 
+      - name: Apply Disaster Recovery Schedules
+        run: |
+          if kubectl get crd schedules.velero.io > /dev/null 2>&1; then
+            kubectl apply -f k8s/dr/velero-schedules.yaml
+          else
+            echo "Velero is not installed; follow docs/dr/DISASTER_RECOVERY_PLAN.md before enabling schedules."
+          fi
+
       - name: Post-Deploy Smoke Tests (Production)
         run: |
           NAMESPACE="cloudmart-prod"

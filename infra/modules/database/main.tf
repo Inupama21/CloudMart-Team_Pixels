@@ -48,6 +48,17 @@ resource "random_password" "db_password" {
   override_special = "!#$%&*()-_=+[]{}<>:?"
 }
 
+resource "aws_kms_key" "database" {
+  description             = "CloudMart ${var.environment} database encryption key"
+  deletion_window_in_days = 7
+  enable_key_rotation     = true
+}
+
+resource "aws_kms_alias" "database" {
+  name          = "alias/cloudmart-${var.environment}-database"
+  target_key_id = aws_kms_key.database.key_id
+}
+
 resource "aws_db_instance" "users_db" {
   identifier           = "cloudmart-users-db-${var.environment}"
   allocated_storage    = 20
@@ -63,11 +74,18 @@ resource "aws_db_instance" "users_db" {
   db_subnet_group_name   = aws_db_subnet_group.rds.name
   vpc_security_group_ids = [aws_security_group.rds.id]
   
-  skip_final_snapshot    = true # For dev/assignment purposes
-  publicly_accessible    = false
-  storage_encrypted      = true
-  
-  backup_retention_period = 7
+  multi_az                  = var.multi_az
+  deletion_protection       = var.deletion_protection
+  skip_final_snapshot       = var.skip_final_snapshot
+  final_snapshot_identifier = var.skip_final_snapshot ? null : "cloudmart-users-db-${var.environment}-final"
+  publicly_accessible       = false
+  storage_encrypted         = true
+  kms_key_id                = aws_kms_key.database.arn
+
+  backup_retention_period = var.backup_retention_days
+  backup_window           = "03:00-04:00"
+  maintenance_window      = "sun:04:30-sun:05:30"
+  copy_tags_to_snapshot   = true
   
   tags = {
     Environment = var.environment
@@ -91,7 +109,8 @@ resource "aws_dynamodb_table" "products_table" {
   }
 
   server_side_encryption {
-    enabled = true
+    enabled     = true
+    kms_key_arn = aws_kms_key.database.arn
   }
 
   tags = {

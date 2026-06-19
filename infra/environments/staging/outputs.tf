@@ -97,3 +97,13 @@ output "alerts_sns_topic_arn" {
   description = "SNS topic ARN for CloudWatch alarms"
   value       = module.observability.sns_topic_arn
 }
+
+output "monthly_budget_name" {
+  description = "AWS Budget monitoring tagged CloudMart spend"
+  value       = module.cost_management.budget_name
+}
+
+output "database_kms_key_arn" {
+  description = "KMS key protecting RDS and DynamoDB"
+  value       = module.database.database_kms_key_arn
+}

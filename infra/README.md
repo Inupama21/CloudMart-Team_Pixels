@@ -130,7 +130,7 @@ kubectl get nodes
 | AZs | 2 | 3 |
 | RDS Multi-AZ | ❌ | ✅ |
 | RDS instance | `db.t3.micro` | `db.t3.small` |
-| RDS backup | 3 days | 14 days |
+| RDS backup | 7 days | 7 days |
 | EKS API endpoint | Public | Private |
 | Deletion protection | ❌ | ✅ |
 

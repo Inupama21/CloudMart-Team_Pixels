@@ -97,3 +97,23 @@ output "alerts_sns_topic_arn" {
   description = "SNS topic ARN for CloudWatch alarms"
   value       = module.observability.sns_topic_arn
 }
+
+output "monthly_budget_name" {
+  description = "AWS Budget monitoring tagged CloudMart spend"
+  value       = module.cost_management.budget_name
+}
+
+output "velero_bucket_name" {
+  description = "S3 bucket for Kubernetes backups"
+  value       = module.disaster_recovery.velero_bucket_name
+}
+
+output "velero_role_arn" {
+  description = "IRSA role for Velero"
+  value       = module.disaster_recovery.velero_role_arn
+}
+
+output "database_kms_key_arn" {
+  description = "KMS key protecting RDS and DynamoDB"
+  value       = module.database.database_kms_key_arn
+}

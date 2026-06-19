@@ -1,6 +1,11 @@
 aws_region  = "us-east-1"
 project     = "cloudmart"
 environment = "staging"
+team        = "Team-Pixels"
+owner_email = "okdkithmini@gmail.com"
+
+monthly_budget_usd         = 50
+budget_notification_emails = ["okdkithmini@gmail.com"]
 
 # Network
 vpc_cidr             = "10.1.0.0/16"

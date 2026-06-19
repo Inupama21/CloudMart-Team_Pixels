@@ -24,3 +24,27 @@ variable "db_password" {
   sensitive   = true
   default     = null
 }
+
+variable "multi_az" {
+  description = "Whether RDS should maintain a synchronous standby in another AZ"
+  type        = bool
+  default     = false
+}
+
+variable "backup_retention_days" {
+  description = "Number of days automated RDS backups are retained"
+  type        = number
+  default     = 7
+}
+
+variable "deletion_protection" {
+  description = "Protect the RDS instance from accidental deletion"
+  type        = bool
+  default     = false
+}
+
+variable "skip_final_snapshot" {
+  description = "Whether RDS deletion may proceed without a final snapshot"
+  type        = bool
+  default     = true
+}
