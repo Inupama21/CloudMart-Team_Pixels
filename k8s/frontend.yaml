@@ -1,4 +1,4 @@
-apiVersion: apps/v1
+﻿apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: frontend
@@ -65,7 +65,6 @@ spec:
             periodSeconds: 20
             timeoutSeconds: 3
             failureThreshold: 3
-
 ---
 apiVersion: v1
 kind: Service
