@@ -14,9 +14,20 @@ variable "environment" {
 }
 
 variable "cluster_name" {
-  description = "Single EKS cluster hosting production and staging namespaces"
+  description = "Existing EKS cluster hosting production and staging namespaces"
   type        = string
   default     = "cloudmart-cluster"
+}
+
+variable "existing_cluster_vpc_cidr" {
+  description = "CIDR of the VPC containing the preserved EKS cluster"
+  type        = string
+  default     = "10.1.0.0/16"
+
+  validation {
+    condition     = can(cidrhost(var.existing_cluster_vpc_cidr, 0))
+    error_message = "existing_cluster_vpc_cidr must be a valid IPv4 CIDR."
+  }
 }
 
 variable "team" {
@@ -105,18 +116,6 @@ variable "bastion_allowed_cidrs" {
   description = "Optional SSH CIDRs; leave empty to require SSM Session Manager"
   type        = list(string)
   default     = []
-}
-
-variable "cluster_public_access_cidrs" {
-  description = "CIDRs allowed to reach the public EKS API endpoint"
-  type        = list(string)
-  default     = ["0.0.0.0/0"]
-}
-
-variable "node_instance_types" {
-  description = "EKS managed-node instance types"
-  type        = list(string)
-  default     = ["t3.medium"]
 }
 
 variable "monthly_budget_usd" {

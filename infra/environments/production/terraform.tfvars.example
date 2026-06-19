@@ -18,8 +18,13 @@ private_subnet_cidrs = ["10.0.10.0/24", "10.0.11.0/24", "10.0.12.0/24"]
 data_subnet_cidrs    = ["10.0.20.0/24", "10.0.21.0/24", "10.0.22.0/24"]
 availability_zones   = ["us-east-1a", "us-east-1b", "us-east-1c"]
 
-cluster_public_access_cidrs = ["0.0.0.0/0"] # Restrict to trusted egress CIDRs where possible.
-enable_bastion              = true
-bastion_allowed_cidrs       = [] # Empty means SSM Session Manager only.
+# The existing shared EKS cluster is in this VPC range.
+existing_cluster_vpc_cidr = "10.1.0.0/16"
+
+enable_bastion        = true
+bastion_allowed_cidrs = [] # Empty means SSM Session Manager only.
+
+# Set false when GuardDuty is unavailable in the AWS account.
+enable_guardduty = true
 
 

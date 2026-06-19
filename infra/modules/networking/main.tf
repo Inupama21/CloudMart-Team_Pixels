@@ -35,9 +35,9 @@ resource "aws_subnet" "public" {
   map_public_ip_on_launch = true
 
   tags = merge(var.common_tags, {
-    Name                                     = "${var.project}-${var.environment}-public-${count.index + 1}"
-    Tier                                     = "public"
-    "kubernetes.io/role/elb"                 = "1"
+    Name                                        = "${var.project}-${var.environment}-public-${count.index + 1}"
+    Tier                                        = "public"
+    "kubernetes.io/role/elb"                    = "1"
     "kubernetes.io/cluster/${var.cluster_name}" = "shared"
   })
 }
@@ -51,10 +51,10 @@ resource "aws_subnet" "private" {
   availability_zone = var.availability_zones[count.index]
 
   tags = merge(var.common_tags, {
-    Name                                             = "${var.project}-${var.environment}-app-${count.index + 1}"
-    Tier                                             = "application"
-    "kubernetes.io/role/internal-elb"                = "1"
-    "kubernetes.io/cluster/${var.cluster_name}"      = "shared"
+    Name                                        = "${var.project}-${var.environment}-app-${count.index + 1}"
+    Tier                                        = "application"
+    "kubernetes.io/role/internal-elb"           = "1"
+    "kubernetes.io/cluster/${var.cluster_name}" = "shared"
   })
 }
 

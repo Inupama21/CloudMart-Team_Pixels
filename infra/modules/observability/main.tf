@@ -156,10 +156,10 @@ resource "aws_cloudwatch_dashboard" "main" {
         width  = 12
         height = 6
         properties = {
-          title   = "Pod CPU by Service"
-          period  = 60
-          stat    = "Average"
-          region  = var.aws_region
+          title  = "Pod CPU by Service"
+          period = 60
+          stat   = "Average"
+          region = var.aws_region
           metrics = [
             ["ContainerInsights", "pod_cpu_utilization", "ClusterName", var.cluster_name, "Namespace", "cloudmart-prod", "PodName", "product-service"],
             ["ContainerInsights", "pod_cpu_utilization", "ClusterName", var.cluster_name, "Namespace", "cloudmart-prod", "PodName", "order-service"],
@@ -174,10 +174,10 @@ resource "aws_cloudwatch_dashboard" "main" {
         width  = 12
         height = 6
         properties = {
-          title   = "Pod Memory by Service"
-          period  = 60
-          stat    = "Average"
-          region  = var.aws_region
+          title  = "Pod Memory by Service"
+          period = 60
+          stat   = "Average"
+          region = var.aws_region
           metrics = [
             ["ContainerInsights", "pod_memory_utilization", "ClusterName", var.cluster_name, "Namespace", "cloudmart-prod", "PodName", "product-service"],
             ["ContainerInsights", "pod_memory_utilization", "ClusterName", var.cluster_name, "Namespace", "cloudmart-prod", "PodName", "order-service"],
@@ -192,10 +192,10 @@ resource "aws_cloudwatch_dashboard" "main" {
         width  = 12
         height = 6
         properties = {
-          title   = "SQS Queue Depth"
-          period  = 60
-          stat    = "Average"
-          region  = var.aws_region
+          title  = "SQS Queue Depth"
+          period = 60
+          stat   = "Average"
+          region = var.aws_region
           metrics = [
             ["AWS/SQS", "ApproximateNumberOfMessagesVisible", "QueueName", "cloudmart-order-events-${var.environment}"]
           ]
@@ -208,10 +208,10 @@ resource "aws_cloudwatch_dashboard" "main" {
         width  = 12
         height = 6
         properties = {
-          title   = "RDS CPU"
-          period  = 60
-          stat    = "Average"
-          region  = var.aws_region
+          title  = "RDS CPU"
+          period = 60
+          stat   = "Average"
+          region = var.aws_region
           metrics = [
             ["AWS/RDS", "CPUUtilization", "DBInstanceIdentifier", var.rds_instance_identifier]
           ]
