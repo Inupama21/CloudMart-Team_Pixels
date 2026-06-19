@@ -9,6 +9,7 @@ owner_email = "kavisekarais.21@uom.lk"
 monthly_budget_usd       = 100
 budget_notification_emails = ["kavisekarais.21@uom.lk"]
 account_id                  = "123456789012"
+rds_kms_key_arn             = "arn:aws:kms:us-east-1:123456789012:key/REPLACE_WITH_EXISTING_RDS_KEY"
 
 # Network – 3 AZs for high availability
 vpc_cidr             = "10.0.0.0/16"

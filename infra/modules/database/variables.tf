@@ -54,3 +54,9 @@ variable "skip_final_snapshot" {
   type        = bool
   default     = true
 }
+
+variable "rds_kms_key_arn" {
+  description = "Existing KMS key used by RDS; set this to avoid replacing an already encrypted database"
+  type        = string
+  default     = null
+}

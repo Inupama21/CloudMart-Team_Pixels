@@ -76,7 +76,7 @@ resource "aws_db_instance" "users_db" {
   allocated_storage    = 20
   storage_type         = "gp2"
   engine               = "postgres"
-  engine_version       = "15.4"
+  engine_version       = "15"
   instance_class       = "db.t3.micro" # Free tier eligible
   db_name              = "cloudmart"
   username             = "cloudmart"
@@ -92,7 +92,7 @@ resource "aws_db_instance" "users_db" {
   final_snapshot_identifier = var.skip_final_snapshot ? null : "cloudmart-users-db-${var.environment}-final"
   publicly_accessible       = false
   storage_encrypted         = true
-  kms_key_id                = aws_kms_key.database.arn
+  kms_key_id                = var.rds_kms_key_arn != null ? var.rds_kms_key_arn : aws_kms_key.database.arn
 
   backup_retention_period = var.backup_retention_days
   backup_window           = "03:00-04:00"

@@ -40,21 +40,21 @@ locals {
 module "networking" {
   source = "../../modules/networking"
 
-  project              = var.project
-  environment          = var.environment
-  aws_region           = var.aws_region
-  account_id           = var.account_id
-  cluster_name         = var.cluster_name
-  vpc_cidr             = var.vpc_cidr
-  public_subnet_cidrs  = var.public_subnet_cidrs
-  private_subnet_cidrs = var.private_subnet_cidrs
-  data_subnet_cidrs    = var.data_subnet_cidrs
-  availability_zones   = var.availability_zones
-  enable_nat_gateway   = true
-  enable_flow_logs     = true
-  enable_bastion       = var.enable_bastion
+  project               = var.project
+  environment           = var.environment
+  aws_region            = var.aws_region
+  account_id            = var.account_id
+  cluster_name          = var.cluster_name
+  vpc_cidr              = var.vpc_cidr
+  public_subnet_cidrs   = var.public_subnet_cidrs
+  private_subnet_cidrs  = var.private_subnet_cidrs
+  data_subnet_cidrs     = var.data_subnet_cidrs
+  availability_zones    = var.availability_zones
+  enable_nat_gateway    = true
+  enable_flow_logs      = true
+  enable_bastion        = var.enable_bastion
   bastion_allowed_cidrs = var.bastion_allowed_cidrs
-  common_tags          = local.common_tags
+  common_tags           = local.common_tags
 }
 
 # -- Managed Kubernetes -------------------------------------------------------
@@ -79,16 +79,17 @@ module "eks" {
 module "database" {
   source = "../../modules/database"
 
-  vpc_id                = module.networking.vpc_id
-  private_subnet_ids    = module.networking.data_subnet_ids
-  eks_security_group_id = module.networking.eks_node_security_group_id
+  vpc_id                    = module.networking.vpc_id
+  private_subnet_ids        = module.networking.data_subnet_ids
+  eks_security_group_id     = module.networking.eks_node_security_group_id
   bastion_security_group_id = module.networking.bastion_security_group_id
-  environment           = var.environment
-  db_password           = var.db_password
-  multi_az              = true
-  backup_retention_days = 7
-  deletion_protection   = true
-  skip_final_snapshot   = false
+  environment               = var.environment
+  db_password               = var.db_password
+  multi_az                  = true
+  backup_retention_days     = 7
+  deletion_protection       = true
+  skip_final_snapshot       = false
+  rds_kms_key_arn           = var.rds_kms_key_arn
 }
 
 # ── Messaging (SQS) ──────────────────────────────────────────
@@ -115,20 +116,20 @@ module "observability" {
 module "security" {
   source = "../../modules/security"
 
-  aws_region          = var.aws_region
-  account_id          = var.account_id
-  oidc_url            = module.eks.oidc_provider_url
-  alb_arn             = var.alb_arn
-  dynamodb_table_name = module.database.dynamodb_table_name
-  sqs_queue_arn       = module.messaging.sqs_queue_arn
-  db_host             = module.database.rds_address
-  db_port             = module.database.rds_port
-  db_name             = module.database.rds_db_name
-  db_password         = module.database.db_password
+  aws_region            = var.aws_region
+  account_id            = var.account_id
+  oidc_url              = module.eks.oidc_provider_url
+  alb_arn               = var.alb_arn
+  dynamodb_table_name   = module.database.dynamodb_table_name
+  sqs_queue_arn         = module.messaging.sqs_queue_arn
+  db_host               = module.database.rds_address
+  db_port               = module.database.rds_port
+  db_name               = module.database.rds_db_name
+  db_password           = module.database.db_password
   kubernetes_namespaces = ["cloudmart-prod"]
-  environment         = var.environment
-  team_id             = var.project
-  enable_guardduty    = var.enable_guardduty
+  environment           = var.environment
+  team_id               = var.project
+  enable_guardduty      = var.enable_guardduty
 }
 
 # -- Cost management ----------------------------------------------------------

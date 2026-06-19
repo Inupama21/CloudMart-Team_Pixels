@@ -161,7 +161,7 @@ resource "aws_route_table_association" "data" {
 # ALB: public HTTP/HTTPS only, with outbound traffic limited to the application tier.
 resource "aws_security_group" "alb" {
   name        = "${var.project}-${var.environment}-alb-sg"
-  description = "Internet HTTP/HTTPS to the CloudMart ALB"
+  description = "Allow HTTP/HTTPS from internet"
   vpc_id      = aws_vpc.main.id
 
   ingress {
@@ -196,7 +196,7 @@ resource "aws_security_group" "alb" {
 # EKS nodes: cluster-internal traffic, ALB targets and required outbound access.
 resource "aws_security_group" "eks_nodes" {
   name        = "${var.project}-${var.environment}-eks-nodes-sg"
-  description = "Least-privilege supplemental security group for EKS nodes"
+  description = "Allow intra-node and ALB traffic"
   vpc_id      = aws_vpc.main.id
 
   ingress {

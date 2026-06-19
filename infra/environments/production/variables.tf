@@ -65,6 +65,12 @@ variable "db_password" {
   default     = null
 }
 
+variable "rds_kms_key_arn" {
+  description = "KMS key currently protecting the existing production RDS instance"
+  type        = string
+  default     = null
+}
+
 # ── Security
 variable "account_id" {
   description = "AWS Account ID"

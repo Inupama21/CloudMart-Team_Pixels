@@ -145,7 +145,7 @@ resource "aws_cloudwatch_metric_alarm" "order_service_high_cpu" {
 # ── Dashboard ───────────────────────────────────────────────────────────────
 
 resource "aws_cloudwatch_dashboard" "main" {
-  dashboard_name = "CloudMart-${var.environment}"
+  dashboard_name = "CloudMart-Overview-${var.environment}"
 
   dashboard_body = jsonencode({
     widgets = [
