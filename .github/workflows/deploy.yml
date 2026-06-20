@@ -216,27 +216,25 @@ jobs:
 
           kubectl apply -f k8s/namespace.yaml
 
-          helm repo add secrets-store-csi-driver https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts --force-update
-          helm repo add aws-secrets-manager https://aws.github.io/secrets-store-csi-driver-provider-aws --force-update
-          helm repo update
-          helm upgrade --install csi-secrets-store secrets-store-csi-driver/secrets-store-csi-driver \
-            --namespace kube-system \
-            --set syncSecret.enabled=true \
-            --set enableSecretRotation=true
-          helm upgrade --install secrets-store-csi-driver-provider-aws \
-            aws-secrets-manager/secrets-store-csi-driver-provider-aws \
-            --namespace kube-system
+          SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id cloudmart/staging/application --query SecretString --output text)
+          DB_HOST=$(echo $SECRET_JSON | jq -r .db_host)
+          DB_USER=$(echo $SECRET_JSON | jq -r .db_user)
+          DB_PASSWORD=$(echo $SECRET_JSON | jq -r .db_password)
+          JWT_SECRET=$(echo $SECRET_JSON | jq -r .jwt_secret)
+
+          kubectl create secret generic cloudmart-secrets \
+            --namespace $NAMESPACE \
+            --from-literal=DB_HOST="$DB_HOST" \
+            --from-literal=DB_USER="$DB_USER" \
+            --from-literal=DB_PASSWORD="$DB_PASSWORD" \
+            --from-literal=JWT_SECRET="$JWT_SECRET" \
+            --dry-run=client -o yaml | kubectl apply -f -
 
           sed \
             -e "s|namespace: cloudmart-prod|namespace: $NAMESPACE|g" \
             -e "s|AWS_ACCOUNT_ID|${AWS_ACCOUNT_ID}|g" \
             -e "s|ROLE_ENVIRONMENT|staging|g" \
             k8s/security/service-accounts.yaml | kubectl apply -f -
-
-          sed \
-            -e "s|namespace: cloudmart-prod|namespace: $NAMESPACE|g" \
-            -e "s|SECRET_NAME|cloudmart/staging/application|g" \
-            k8s/security/secret-provider-class.yaml | kubectl apply -f -
 
           for POLICY in \
             k8s/security/network-policy-default-deny.yaml \
@@ -363,24 +361,24 @@ jobs:
 
           kubectl apply -f k8s/namespace.yaml
 
-          helm repo add secrets-store-csi-driver https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts --force-update
-          helm repo add aws-secrets-manager https://aws.github.io/secrets-store-csi-driver-provider-aws --force-update
-          helm repo update
-          helm upgrade --install csi-secrets-store secrets-store-csi-driver/secrets-store-csi-driver \
-            --namespace kube-system \
-            --set syncSecret.enabled=true \
-            --set enableSecretRotation=true
-          helm upgrade --install secrets-store-csi-driver-provider-aws \
-            aws-secrets-manager/secrets-store-csi-driver-provider-aws \
-            --namespace kube-system
+          SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id cloudmart/production/application --query SecretString --output text)
+          DB_HOST=$(echo $SECRET_JSON | jq -r .db_host)
+          DB_USER=$(echo $SECRET_JSON | jq -r .db_user)
+          DB_PASSWORD=$(echo $SECRET_JSON | jq -r .db_password)
+          JWT_SECRET=$(echo $SECRET_JSON | jq -r .jwt_secret)
+
+          kubectl create secret generic cloudmart-secrets \
+            --namespace $NAMESPACE \
+            --from-literal=DB_HOST="$DB_HOST" \
+            --from-literal=DB_USER="$DB_USER" \
+            --from-literal=DB_PASSWORD="$DB_PASSWORD" \
+            --from-literal=JWT_SECRET="$JWT_SECRET" \
+            --dry-run=client -o yaml | kubectl apply -f -
 
           sed \
             -e "s|AWS_ACCOUNT_ID|${AWS_ACCOUNT_ID}|g" \
             -e "s|ROLE_ENVIRONMENT|production|g" \
             k8s/security/service-accounts.yaml | kubectl apply -f -
-
-          sed "s|SECRET_NAME|cloudmart/production/application|g" \
-            k8s/security/secret-provider-class.yaml | kubectl apply -f -
 
           for POLICY in \
             k8s/security/network-policy-default-deny.yaml \
