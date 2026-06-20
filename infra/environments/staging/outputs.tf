@@ -50,3 +50,72 @@ output "sqs_dlq_name" {
   description = "The SQS dead-letter queue name"
   value       = module.messaging.sqs_dlq_name
 }
+
+# ── Security
+output "kms_key_arn" {
+  description = "KMS key ARN — Member 4 needs this for RDS encryption"
+  value       = module.security.kms_key_arn
+}
+
+output "waf_acl_arn" {
+  description = "WAF ACL ARN — Member 6 needs this for ALB association"
+  value       = module.security.waf_acl_arn
+}
+
+output "guardduty_detector_id" {
+  description = "GuardDuty detector ID"
+  value       = module.security.guardduty_detector_id
+}
+
+output "product_service_role_arn" {
+  description = "IAM role ARN for product-service IRSA"
+  value       = module.security.product_service_role_arn
+}
+
+output "order_service_role_arn" {
+  description = "IAM role ARN for order-service IRSA"
+  value       = module.security.order_service_role_arn
+}
+
+output "notification_service_role_arn" {
+  description = "IAM role ARN for notification-service IRSA"
+  value       = module.security.notification_service_role_arn
+}
+
+output "user_service_role_arn" {
+  description = "IAM role ARN for user-service IRSA"
+  value       = module.security.user_service_role_arn
+}
+
+# Observability outputs
+output "cloudwatch_dashboard_name" {
+  description = "CloudWatch dashboard name"
+  value       = module.observability.dashboard_name
+}
+
+output "alerts_sns_topic_arn" {
+  description = "SNS topic ARN for CloudWatch alarms"
+  value       = module.observability.sns_topic_arn
+}
+
+output "monthly_budget_name" {
+  description = "AWS Budget monitoring tagged CloudMart spend"
+  value       = module.cost_management.budget_name
+}
+
+output "database_kms_key_arn" {
+  description = "KMS key protecting RDS and DynamoDB"
+  value       = module.database.database_kms_key_arn
+}
+
+output "data_subnet_ids" {
+  value = module.networking.data_subnet_ids
+}
+
+output "vpc_flow_log_group" {
+  value = module.networking.flow_log_group_name
+}
+
+output "application_secret_name" {
+  value = module.security.application_secret_name
+}

@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cloudmart-config
+  namespace: cloudmart-staging
+
+data:
+  AWS_REGION: us-east-1
+
+  DB_NAME: cloudmart
+  DB_PORT: "5432"
+  DB_SSLMODE: require
+
+
+  USER_DB_BACKEND: postgres
+
+  DYNAMODB_TABLE: cloudmart-products-staging
+  PRODUCT_STORE_BACKEND: dynamodb
+
+  PRODUCT_SERVICE_URL: http://product-service:8001
+  ORDER_SERVICE_URL: http://order-service:8002
+
+  ORDER_QUEUE_BACKEND: sqs
+  SQS_QUEUE_URL: https://sqs.us-east-1.amazonaws.com/537090271991/cloudmart-order-events-staging
+
+  NOTIFICATION_QUEUE_BACKEND: sqs
+  NOTIFICATION_EMAIL_BACKEND: console
+  NOTIFICATION_POLL_INTERVAL: "5000"

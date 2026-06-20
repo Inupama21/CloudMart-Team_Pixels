@@ -1,3 +1,3 @@
 aws_region        = "us-east-1"
-state_bucket_name = "cloudmart-tf-state-<YOUR-AWS-ACCOUNT-ID>"
+state_bucket_name = "cloudmart-tf-state-<537090271991>"
 lock_table_name   = "cloudmart-tf-locks"

@@ -1,4 +1,24 @@
-# Allow frontend to reach product-service
+# The AWS Load Balancer Controller targets frontend pod IPs. Only private VPC sources may
+# reach port 80; the public client address terminates at the ALB.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-alb-to-frontend
+  namespace: cloudmart-prod
+spec:
+  podSelector:
+    matchLabels:
+      app: frontend
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - ipBlock:
+            cidr: 10.0.0.0/8
+      ports:
+        - protocol: TCP
+          port: 80
+---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -8,15 +28,17 @@ spec:
   podSelector:
     matchLabels:
       app: product-service
+  policyTypes:
+    - Ingress
   ingress:
     - from:
         - podSelector:
             matchLabels:
               app: frontend
       ports:
-        - port: 8001
+        - protocol: TCP
+          port: 8001
 ---
-# Allow order-service to reach product-service (stock check)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -26,15 +48,17 @@ spec:
   podSelector:
     matchLabels:
       app: product-service
+  policyTypes:
+    - Ingress
   ingress:
     - from:
         - podSelector:
             matchLabels:
               app: order-service
       ports:
-        - port: 8001
+        - protocol: TCP
+          port: 8001
 ---
-# Allow frontend to reach order-service
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -44,15 +68,17 @@ spec:
   podSelector:
     matchLabels:
       app: order-service
+  policyTypes:
+    - Ingress
   ingress:
     - from:
         - podSelector:
             matchLabels:
               app: frontend
       ports:
-        - port: 8002
+        - protocol: TCP
+          port: 8002
 ---
-# Allow frontend to reach user-service
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -62,15 +88,51 @@ spec:
   podSelector:
     matchLabels:
       app: user-service
+  policyTypes:
+    - Ingress
   ingress:
     - from:
         - podSelector:
             matchLabels:
               app: frontend
       ports:
-        - port: 8003
+        - protocol: TCP
+          port: 8003
 ---
-# Allow DNS for all pods (without this nothing resolves hostnames)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: frontend-egress
+  namespace: cloudmart-prod
+spec:
+  podSelector:
+    matchLabels:
+      app: frontend
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: product-service
+      ports:
+        - protocol: TCP
+          port: 8001
+    - to:
+        - podSelector:
+            matchLabels:
+              app: order-service
+      ports:
+        - protocol: TCP
+          port: 8002
+    - to:
+        - podSelector:
+            matchLabels:
+              app: user-service
+      ports:
+        - protocol: TCP
+          port: 8003
+---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -78,7 +140,11 @@ metadata:
   namespace: cloudmart-prod
 spec:
   podSelector: {}
+  policyTypes:
+    - Egress
   egress:
     - ports:
-        - port: 53
-          protocol: UDP
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53

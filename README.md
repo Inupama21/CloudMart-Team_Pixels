@@ -210,6 +210,13 @@ cloudmart-starter/
 | | | |
 | | | |
 
+## Operations Documentation
+
+- [Cost management and FinOps](docs/finops/COST_MANAGEMENT.md)
+- [Disaster recovery plan](docs/dr/DISASTER_RECOVERY_PLAN.md)
+- [Networking and security](docs/security/NETWORKING_AND_SECURITY.md)
+- [Kubernetes node instance ADR](docs/adr/ADR-001-kubernetes-node-instance-selection.md)
+
 ## AI Tool Disclosure
 
 _[If your group used GitHub Copilot, ChatGPT, Claude, or any AI assistant, disclose here: which tools, for which tasks, and what review process you applied.]_

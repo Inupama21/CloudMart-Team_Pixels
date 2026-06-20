@@ -13,7 +13,10 @@ spec:
     - Egress
 
   egress:
-    - ports:
+    - to:
+        - ipBlock:
+            cidr: 10.0.0.0/8
+      ports:
         - protocol: TCP
           port: 5432
 
@@ -23,4 +26,6 @@ spec:
 
     - ports:
         - protocol: UDP
+          port: 53
+        - protocol: TCP
           port: 53
