@@ -16,7 +16,7 @@ output "application_secret_name" {
 }
 
 output "guardduty_detector_id" {
-  value = var.enable_guardduty ? aws_guardduty_detector.cloudmart[0].id : null
+  value = null
 }
 
 output "waf_acl_arn" {

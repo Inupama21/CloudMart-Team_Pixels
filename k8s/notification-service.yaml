@@ -29,6 +29,7 @@ spec:
           capabilities:
             drop: ["ALL"]
           runAsNonRoot: true
+          runAsUser: 1000
         env:
         - name: PORT
           value: "8004"

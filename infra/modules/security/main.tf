@@ -79,7 +79,7 @@ resource "aws_secretsmanager_secret_version" "application" {
 }
 
 resource "aws_guardduty_detector" "cloudmart" {
-  count = var.enable_guardduty ? 1 : 0
+  count = 0
 
   enable = true
 

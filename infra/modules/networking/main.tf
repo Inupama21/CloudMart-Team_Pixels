@@ -483,7 +483,7 @@ resource "aws_iam_instance_profile" "bastion" {
 }
 
 resource "aws_instance" "bastion" {
-  count = var.enable_bastion ? 1 : 0
+  count = 0
 
   ami                         = data.aws_ami.amazon_linux[0].id
   instance_type               = var.bastion_instance_type

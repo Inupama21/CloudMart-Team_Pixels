@@ -69,13 +69,13 @@ variable "flow_log_retention_days" {
 variable "enable_bastion" {
   description = "Create a small SSM-managed bastion in the first public subnet"
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "bastion_instance_type" {
   description = "EC2 instance type for the bastion"
   type        = string
-  default     = "t3.nano"
+  default     = "t2.micro"
 }
 
 variable "bastion_allowed_cidrs" {

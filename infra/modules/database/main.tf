@@ -44,6 +44,17 @@ resource "aws_security_group" "rds" {
   }
 
   dynamic "ingress" {
+    for_each = toset(var.eks_allowed_cidrs)
+    content {
+      description = "Allow ICMP for Path MTU Discovery (PMTUD) over VPC Peering"
+      from_port   = -1
+      to_port     = -1
+      protocol    = "icmp"
+      cidr_blocks = [ingress.value]
+    }
+  }
+
+  dynamic "ingress" {
     for_each = var.bastion_security_group_id == null ? [] : [var.bastion_security_group_id]
     content {
       description     = "Administrative PostgreSQL access from the SSM bastion"
