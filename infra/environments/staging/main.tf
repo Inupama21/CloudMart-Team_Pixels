@@ -102,16 +102,16 @@ resource "aws_route" "production_app_to_staging" {
 module "database" {
   source = "../../modules/database"
 
-  vpc_id                = module.networking.vpc_id
-  private_subnet_ids    = module.networking.data_subnet_ids
-  eks_security_group_id = var.production_eks_security_group_id
+  vpc_id                    = module.networking.vpc_id
+  private_subnet_ids        = module.networking.data_subnet_ids
+  eks_security_group_id     = var.production_eks_security_group_id
   bastion_security_group_id = null
-  environment           = var.environment
-  db_password           = var.db_password
-  multi_az              = false
-  backup_retention_days = 7
-  deletion_protection   = false
-  skip_final_snapshot   = true
+  environment               = var.environment
+  db_password               = var.db_password
+  multi_az                  = false
+  backup_retention_days     = 7
+  deletion_protection       = false
+  skip_final_snapshot       = true
 
   depends_on = [aws_vpc_peering_connection.shared_cluster]
 }
@@ -140,20 +140,20 @@ module "observability" {
 module "security" {
   source = "../../modules/security"
 
-  aws_region          = var.aws_region
-  account_id          = var.account_id
-  oidc_url            = var.oidc_url
-  alb_arn             = var.alb_arn
-  dynamodb_table_name = module.database.dynamodb_table_name
-  sqs_queue_arn       = module.messaging.sqs_queue_arn
-  db_host             = module.database.rds_address
-  db_port             = module.database.rds_port
-  db_name             = module.database.rds_db_name
-  db_password         = module.database.db_password
+  aws_region            = var.aws_region
+  account_id            = var.account_id
+  oidc_url              = var.oidc_url
+  alb_arn               = var.alb_arn
+  dynamodb_table_name   = module.database.dynamodb_table_name
+  sqs_queue_arn         = module.messaging.sqs_queue_arn
+  db_host               = module.database.rds_address
+  db_port               = module.database.rds_port
+  db_name               = module.database.rds_db_name
+  db_password           = module.database.db_password
   kubernetes_namespaces = ["cloudmart-staging"]
-  environment         = var.environment
-  team_id             = var.project
-  enable_guardduty    = var.enable_guardduty
+  environment           = var.environment
+  team_id               = var.project
+  enable_guardduty      = var.enable_guardduty
 }
 
 # -- Cost management ----------------------------------------------------------

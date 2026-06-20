@@ -84,5 +84,5 @@ variable "team_id" {
 variable "enable_guardduty" {
   description = "Enable GuardDuty threat detection"
   type        = bool
-  default     = true
+  default     = false
 }

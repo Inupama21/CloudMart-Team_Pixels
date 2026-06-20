@@ -60,7 +60,7 @@ output "flow_log_group_name" {
 
 output "bastion_instance_id" {
   description = "SSM-managed bastion instance ID"
-  value       = var.enable_bastion ? aws_instance.bastion[0].id : null
+  value = null
 }
 
 output "bastion_security_group_id" {

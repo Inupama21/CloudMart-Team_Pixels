@@ -14,9 +14,20 @@ variable "environment" {
 }
 
 variable "cluster_name" {
-  description = "Single EKS cluster hosting production and staging namespaces"
+  description = "Existing EKS cluster hosting production and staging namespaces"
   type        = string
   default     = "cloudmart-cluster"
+}
+
+variable "existing_cluster_vpc_cidr" {
+  description = "CIDR of the VPC containing the preserved EKS cluster"
+  type        = string
+  default     = "10.1.0.0/16"
+
+  validation {
+    condition     = can(cidrhost(var.existing_cluster_vpc_cidr, 0))
+    error_message = "existing_cluster_vpc_cidr must be a valid IPv4 CIDR."
+  }
 }
 
 variable "team" {
@@ -65,6 +76,12 @@ variable "db_password" {
   default     = null
 }
 
+variable "rds_kms_key_arn" {
+  description = "KMS key currently protecting the existing production RDS instance"
+  type        = string
+  default     = null
+}
+
 # ── Security
 variable "account_id" {
   description = "AWS Account ID"
@@ -101,18 +118,6 @@ variable "bastion_allowed_cidrs" {
   default     = []
 }
 
-variable "cluster_public_access_cidrs" {
-  description = "CIDRs allowed to reach the public EKS API endpoint"
-  type        = list(string)
-  default     = ["0.0.0.0/0"]
-}
-
-variable "node_instance_types" {
-  description = "EKS managed-node instance types"
-  type        = list(string)
-  default     = ["t3.medium"]
-}
-
 variable "monthly_budget_usd" {
   description = "Production monthly cost threshold"
   type        = number
@@ -122,5 +127,5 @@ variable "monthly_budget_usd" {
 variable "budget_notification_emails" {
   description = "Recipients for forecasted and actual AWS Budget alerts"
   type        = list(string)
-  default     = ["team-pixels@example.com"]
+  default     = ["kavisekarais.21@uom.lk"]
 }

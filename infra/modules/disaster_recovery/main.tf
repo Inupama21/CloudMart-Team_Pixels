@@ -88,8 +88,8 @@ resource "aws_iam_role_policy" "velero" {
         Resource = "*"
       },
       {
-        Effect = "Allow"
-        Action = ["s3:ListBucket"]
+        Effect   = "Allow"
+        Action   = ["s3:ListBucket"]
         Resource = aws_s3_bucket.velero.arn
       },
       {

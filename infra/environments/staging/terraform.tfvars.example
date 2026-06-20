@@ -2,10 +2,10 @@ aws_region  = "us-east-1"
 project     = "cloudmart"
 environment = "staging"
 team        = "Team-Pixels"
-owner_email = "okdkithmini@gmail.com"
+owner_email = "kavisekarais.21@uom.lk"
 
 monthly_budget_usd         = 50
-budget_notification_emails = ["okdkithmini@gmail.com"]
+budget_notification_emails = ["kavisekarais.21@uom.lk"]
 account_id                  = "123456789012"
 oidc_url                    = "oidc.eks.us-east-1.amazonaws.com/id/REPLACE_WITH_CLUSTER_OIDC_ID"
 production_vpc_id           = "vpc-REPLACE_FROM_PRODUCTION_OUTPUT"

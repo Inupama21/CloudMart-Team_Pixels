@@ -9,8 +9,16 @@ variable "private_subnet_ids" {
 }
 
 variable "eks_security_group_id" {
-  description = "Security group ID of the EKS nodes to allow database access"
+  description = "Optional security group ID of EKS nodes in the same VPC"
   type        = string
+  default     = null
+  nullable    = true
+}
+
+variable "eks_allowed_cidrs" {
+  description = "CIDR ranges allowed to reach PostgreSQL, for example a peered EKS VPC"
+  type        = list(string)
+  default     = []
 }
 
 variable "bastion_security_group_id" {
@@ -53,4 +61,10 @@ variable "skip_final_snapshot" {
   description = "Whether RDS deletion may proceed without a final snapshot"
   type        = bool
   default     = true
+}
+
+variable "rds_kms_key_arn" {
+  description = "Existing KMS key used by RDS; set this to avoid replacing an already encrypted database"
+  type        = string
+  default     = null
 }

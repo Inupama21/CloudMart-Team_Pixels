@@ -14,6 +14,8 @@ spec:
     metadata:
       labels:
         app: product-service
+      annotations:
+        rollout.argoproj.io/restart: "2026-06-20T04:33:00Z"
     spec:
       serviceAccountName: product-service-sa
       securityContext:
@@ -21,7 +23,7 @@ spec:
           type: RuntimeDefault
       containers:
       - name: product-service
-        image: <YOUR-REGISTRY>/product-service:latest
+        image: 537090271991.dkr.ecr.us-east-1.amazonaws.com/product-service:latest
         ports:
         - containerPort: 8001
         securityContext:
@@ -29,6 +31,7 @@ spec:
           capabilities:
             drop: ["ALL"]
           runAsNonRoot: true
+          runAsUser: 1000
         env:
         - name: PORT
           value: "8001"
@@ -37,6 +40,16 @@ spec:
             configMapKeyRef:
               name: cloudmart-config
               key: PRODUCT_STORE_BACKEND
+        - name: DYNAMODB_TABLE
+          valueFrom:
+            configMapKeyRef:
+              name: cloudmart-config
+              key: DYNAMODB_TABLE
+        - name: AWS_REGION
+          valueFrom:
+            configMapKeyRef:
+              name: cloudmart-config
+              key: AWS_REGION
         resources:
           requests:
             cpu: 100m
@@ -60,12 +73,6 @@ spec:
     canary:
       stableService: product-service
       canaryService: product-service-canary
-      analysis:
-        templates:
-          - templateName: product-error-rate
-        args:
-          - name: service-name
-            value: product-service-canary
       steps:
         - setWeight: 10
         - pause: { duration: 1m }

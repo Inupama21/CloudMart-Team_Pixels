@@ -119,17 +119,28 @@ output "database_kms_key_arn" {
 }
 
 output "eks_cluster_name" {
-  value = module.eks.cluster_name
+  description = "Name of the preserved shared EKS cluster"
+  value       = data.aws_eks_cluster.existing.name
 }
 
-output "eks_node_role_arn" {
-  description = "Restricted EKS worker-node role"
-  value       = module.eks.node_role_arn
+output "eks_cluster_role_arn" {
+  description = "IAM role used by the preserved EKS control plane"
+  value       = data.aws_eks_cluster.existing.role_arn
 }
 
 output "eks_oidc_provider_url" {
   description = "Use this value for staging workload identity configuration"
-  value       = module.eks.oidc_provider_url
+  value       = local.existing_cluster_oidc_url
+}
+
+output "existing_cluster_vpc_id" {
+  description = "VPC containing the preserved EKS cluster"
+  value       = data.aws_eks_cluster.existing.vpc_config[0].vpc_id
+}
+
+output "existing_cluster_vpc_peering_id" {
+  description = "Peering connection linking production resources to the preserved EKS cluster"
+  value       = local.existing_cluster_vpc_peering_id
 }
 
 output "data_subnet_ids" {
@@ -159,6 +170,6 @@ output "private_route_table_ids" {
 }
 
 output "eks_node_security_group_id" {
-  description = "Use this value for staging RDS access from the shared EKS cluster"
-  value       = module.networking.eks_node_security_group_id
+  description = "Cluster security group attached to the preserved EKS cluster"
+  value       = data.aws_eks_cluster.existing.vpc_config[0].cluster_security_group_id
 }
