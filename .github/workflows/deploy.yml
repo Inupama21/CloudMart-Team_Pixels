@@ -256,6 +256,7 @@ jobs:
           for SERVICE in $SERVICES; do
             MANIFEST_FILE="k8s/$SERVICE.yaml"
             echo "Deploying $SERVICE to $NAMESPACE..."
+            kubectl delete deployment/$SERVICE -n $NAMESPACE --ignore-not-found
             sed \
               -e "s|namespace: cloudmart-prod|namespace: $NAMESPACE|g" \
               "$MANIFEST_FILE" | kubectl apply -f -
