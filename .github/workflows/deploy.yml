@@ -216,7 +216,7 @@ jobs:
 
           kubectl apply -f k8s/namespace.yaml
 
-          SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id cloudmart/staging/application --query SecretString --output text)
+          SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id cloudmart/staging/application | jq -r '.SecretString')
           DB_HOST=$(echo $SECRET_JSON | jq -r .db_host)
           DB_USER=$(echo $SECRET_JSON | jq -r .db_user)
           DB_PASSWORD=$(echo $SECRET_JSON | jq -r .db_password)
@@ -361,7 +361,7 @@ jobs:
 
           kubectl apply -f k8s/namespace.yaml
 
-          SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id cloudmart/production/application --query SecretString --output text)
+          SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id cloudmart/production/application | jq -r '.SecretString')
           DB_HOST=$(echo $SECRET_JSON | jq -r .db_host)
           DB_USER=$(echo $SECRET_JSON | jq -r .db_user)
           DB_PASSWORD=$(echo $SECRET_JSON | jq -r .db_password)
