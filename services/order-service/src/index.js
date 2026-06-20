@@ -70,15 +70,24 @@ async function publishOrderEvent(event) {
   const backend = (process.env.QUEUE_BACKEND || 'memory').toLowerCase();
 
   if (backend === 'sqs') {
-    // TODO: AWS SQS — use @aws-sdk/client-sqs
-    // const { SQSClient, SendMessageCommand } = require('@aws-sdk/client-sqs');
-    // const client = new SQSClient({ region: process.env.AWS_REGION });
-    // await client.send(new SendMessageCommand({
-    //   QueueUrl: process.env.SQS_QUEUE_URL,
-    //   MessageBody: JSON.stringify(event),
-    // }));
-    console.log('[SQS] Would publish event:', event.type);
-    eventLog.push(event);
+    const { SQSClient, SendMessageCommand } = require('@aws-sdk/client-sqs');
+    const client = new SQSClient({ region: process.env.AWS_REGION || 'us-east-1' });
+    const queueUrl = process.env.SQS_QUEUE_URL;
+    if (!queueUrl) {
+      console.error('[SQS] SQS_QUEUE_URL not set — falling back to in-memory');
+      eventLog.push(event);
+      return;
+    }
+    await client.send(new SendMessageCommand({
+      QueueUrl: queueUrl,
+      MessageBody: JSON.stringify(event),
+      MessageAttributes: {
+        EventType: { DataType: 'String', StringValue: event.type },
+        OrderId:   { DataType: 'String', StringValue: event.orderId },
+      },
+    }));
+    console.log(`[SQS] Published event: ${event.type} for order ${event.orderId}`);
+    eventLog.push(event); // Also keep local log for /events endpoint
   } else if (backend === 'pubsub') {
     // TODO: GCP Pub/Sub — use @google-cloud/pubsub
     // const { PubSub } = require('@google-cloud/pubsub');
@@ -283,7 +292,7 @@ app.get('/events', (req, res) => {
 // ---------------------------------------------------------------------------
 // Error handling
 // ---------------------------------------------------------------------------
-app.use((err, req, res, next) => {
+app.use((err, req, res) => {
   console.error('[Error]', err.stack);
   res.status(500).json({ error: 'Internal Server Error' });
 });

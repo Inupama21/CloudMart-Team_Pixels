@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cloudmart-config
+  namespace: cloudmart-prod
+
+data:
+  # ======================
+  # DB CONFIG
+  # ======================
+  DB_NAME: cloudmart
+  DB_PORT: "5432"
+  DB_SSLMODE: require
+  AWS_REGION: us-east-1
+
+  # ======================
+  # USER SERVICE
+  # ======================
+  USER_DB_BACKEND: postgres
+
+  # ======================
+  # PRODUCT SERVICE
+  # ======================
+  PRODUCT_STORE_BACKEND: dynamodb
+  DYNAMODB_TABLE: cloudmart-products-production
+  PRODUCT_SERVICE_URL: http://product-service:8001
+
+  # ======================
+  # ORDER SERVICE
+  # ======================
+  ORDER_QUEUE_BACKEND: sqs
+  SQS_QUEUE_URL: https://sqs.us-east-1.amazonaws.com/537090271991/cloudmart-order-events-production
+  ORDER_SERVICE_URL: http://order-service:8002
+
+  # ======================
+  # NOTIFICATION SERVICE
+  # ======================
+  NOTIFICATION_QUEUE_BACKEND: sqs
+  NOTIFICATION_EMAIL_BACKEND: console
+  NOTIFICATION_POLL_INTERVAL: "5000"

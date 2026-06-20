@@ -8,6 +8,9 @@ RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 # ---- Stage 2: Runtime ----
 FROM python:3.11-slim
 
+# Upgrade packages to patch vulnerabilities
+RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
+
 # Create non-root user
 RUN groupadd -r appuser && useradd -r -g appuser appuser
 
@@ -18,6 +21,7 @@ COPY --from=builder /install /usr/local
 
 # Copy application code
 COPY app.py .
+COPY stores/ ./stores/
 
 # Switch to non-root user
 USER appuser

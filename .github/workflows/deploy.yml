@@ -1,0 +1,486 @@
+name: CloudMart CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - 'feature/*'
+      # - 'ci/*'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  AWS_ACCOUNT_ID: "537090271991"
+  AWS_ROLE_ARN: arn:aws:iam::537090271991:role/github-actions-cloudmart-deploy-role
+  CLUSTER_NAME: cloudmart-cluster
+  ACM_CERTIFICATE_ARN: ${{ vars.ACM_CERTIFICATE_ARN }}
+  WAF_ACL_ARN: ${{ vars.WAF_ACL_ARN }}
+  ALB_SECURITY_GROUP_ID: ${{ vars.ALB_SECURITY_GROUP_ID }}
+
+jobs:
+
+# -----------------------------
+# 1. LINT + TEST (CI)
+# -----------------------------
+  ci:
+    name: CI - Lint & Test
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [frontend, user-service, product-service, order-service, notification-service]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lint Dockerfile
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: ./services/${{ matrix.service }}/Dockerfile
+          ignore: DL3018,DL3007
+
+      - name: Install Node.js Dependencies
+        if: matrix.service == 'frontend' || matrix.service == 'order-service' || matrix.service == 'notification-service'
+        run: |
+          cd services/${{ matrix.service }}
+          npm ci
+
+      # - name: Install ESLint
+      #   if: matrix.service == 'frontend' || matrix.service == 'order-service' || matrix.service == 'notification-service'
+      #   run: |
+      #     cd services/${{ matrix.service }}
+      #     npm install --save-dev eslint
+
+      - name: Lint Node.js Service
+        if: matrix.service == 'frontend' || matrix.service == 'order-service' || matrix.service == 'notification-service'
+        run: |
+          cd services/${{ matrix.service }}
+          npx eslint .
+
+      - name: Test Node.js Service
+        if: matrix.service == 'frontend' || matrix.service == 'order-service' || matrix.service == 'notification-service'
+        run: |
+          cd services/${{ matrix.service }}
+          CI=true npm test
+
+      - name: Set up Python
+        if: matrix.service == 'product-service' || matrix.service == 'user-service'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python Dependencies
+        if: matrix.service == 'product-service' || matrix.service == 'user-service'
+        run: |
+          cd services/${{ matrix.service }}
+          pip install -r requirements.txt
+          pip install flake8
+
+      - name: Lint Python Service
+        if: matrix.service == 'product-service' || matrix.service == 'user-service'
+        run: |
+          cd services/${{ matrix.service }}
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+      - name: Test Python Service
+        if: matrix.service == 'product-service' || matrix.service == 'user-service'
+        run: |
+          cd services/${{ matrix.service }}
+          python -m unittest discover -s tests
+
+# -----------------------------
+# 2. BUILD + SCAN + PUSH
+# -----------------------------
+  build:
+    name: Build & Push Images
+    needs: ci
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [frontend, user-service, product-service, order-service, notification-service]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: AWS Login (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          audience: sts.amazonaws.com
+
+      - name: Login ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build Image for Scan
+        uses: docker/build-push-action@v5
+        with:
+          context: ./services/${{ matrix.service }}
+          load: true
+          tags: local-image:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run Trivy Vulnerability Scanner
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: 'local-image:latest'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL'
+
+      - name: Push Image to ECR
+        uses: docker/build-push-action@v5
+        with:
+          context: ./services/${{ matrix.service }}
+          push: true
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/${{ matrix.service }}:latest
+            ${{ steps.login-ecr.outputs.registry }}/${{ matrix.service }}:sha-${{ github.sha }}
+          cache-from: type=gha
+
+# -----------------------------
+# 3. MANIFEST VALIDATION
+# -----------------------------
+  validate:
+    name: Validate Kubernetes YAML
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install kubeconform
+        run: |
+          curl -L -s -o kubeconform.tar.gz \
+            https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz
+          tar -xzf kubeconform.tar.gz
+
+      - name: Validate Manifests
+        run: ./kubeconform -summary -ignore-missing-schemas k8s/
+
+# -----------------------------
+# 4. DEPLOY TO STAGING
+# -----------------------------
+  deploy-staging:
+    name: Deploy to Staging
+    needs: [build, validate]
+    if: github.ref == 'refs/heads/develop' 
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: AWS Login
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          audience: sts.amazonaws.com
+
+      - name: Login ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name ${{ env.CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+
+      - name: Deploy All Services to Staging
+        run: |
+          REGISTRY="${{ steps.login-ecr.outputs.registry }}"
+          IMAGE_TAG="sha-${{ github.sha }}"
+          NAMESPACE="cloudmart-staging"
+          SERVICES="frontend user-service product-service order-service notification-service"
+
+          kubectl apply -f k8s/namespace.yaml
+
+          SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id cloudmart/staging/application | jq -r '.SecretString')
+          DB_HOST=$(echo $SECRET_JSON | jq -r .db_host)
+          DB_USER=$(echo $SECRET_JSON | jq -r .db_user)
+          DB_PASSWORD=$(echo $SECRET_JSON | jq -r .db_password)
+          JWT_SECRET=$(echo $SECRET_JSON | jq -r .jwt_secret)
+
+          kubectl create secret generic cloudmart-secrets \
+            --namespace $NAMESPACE \
+            --from-literal=DB_HOST="$DB_HOST" \
+            --from-literal=DB_USER="$DB_USER" \
+            --from-literal=DB_PASSWORD="$DB_PASSWORD" \
+            --from-literal=JWT_SECRET="$JWT_SECRET" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+          sed \
+            -e "s|namespace: cloudmart-prod|namespace: $NAMESPACE|g" \
+            -e "s|AWS_ACCOUNT_ID|${AWS_ACCOUNT_ID}|g" \
+            -e "s|ROLE_ENVIRONMENT|staging|g" \
+            k8s/security/service-accounts.yaml | kubectl apply -f -
+
+          for POLICY in \
+            k8s/security/network-policy-default-deny.yaml \
+            k8s/security/network-policies.yaml \
+            k8s/security/notification-network-policy.yaml \
+            k8s/security/order-egress-policy.yaml \
+            k8s/security/product-egress-policy.yaml \
+            k8s/security/user-egress-policy.yaml; do
+            sed "s|namespace: cloudmart-prod|namespace: $NAMESPACE|g" "$POLICY" | kubectl apply -f -
+          done
+
+          kubectl apply -f k8s/configmap-staging.yaml
+          sed \
+            -e "s|ACM_CERTIFICATE_ARN|${ACM_CERTIFICATE_ARN}|g" \
+            -e "s|WAF_ACL_ARN|${WAF_ACL_ARN}|g" \
+            -e "s|ALB_SECURITY_GROUP_ID|${ALB_SECURITY_GROUP_ID}|g" \
+            k8s/ingress-staging.yaml | kubectl apply -f -
+
+          for SERVICE in $SERVICES; do
+            MANIFEST_FILE="k8s/$SERVICE.yaml"
+            echo "Deploying $SERVICE to $NAMESPACE..."
+            kubectl delete deployment/$SERVICE -n $NAMESPACE --ignore-not-found
+            sed \
+              -e "s|namespace: cloudmart-prod|namespace: $NAMESPACE|g" \
+              "$MANIFEST_FILE" | kubectl apply -f -
+            kubectl set image deployment/$SERVICE \
+              $SERVICE=$REGISTRY/$SERVICE:$IMAGE_TAG \
+              -n $NAMESPACE
+          done
+
+      - name: Wait for Rollouts (Staging)
+        run: |
+          NAMESPACE="cloudmart-staging"
+          for SERVICE in frontend user-service product-service order-service notification-service; do
+            echo "Waiting for $SERVICE rollout..."
+            kubectl rollout status deployment/$SERVICE -n $NAMESPACE --timeout=5m
+          done
+
+      - name: Post-Deploy Smoke Tests (Staging)
+        run: |
+          NAMESPACE="cloudmart-staging"
+          
+          # 1. Fetch the AWS ALB Hostname dynamically from Kubernetes Ingress
+          echo "Retrieving ALB Ingress Hostname..."
+          for i in {1..20}; do
+            ALB_HOST=$(kubectl get ingress cloudmart-ingress -n $NAMESPACE -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true)
+            if [ -n "$ALB_HOST" ]; then
+              echo "ALB Hostname detected: $ALB_HOST"
+              break
+            fi
+            echo "Waiting for Ingress controller to assign ALB hostname..."
+            sleep 10
+          done
+          
+          if [ -z "$ALB_HOST" ]; then
+            echo "Error: Failed to retrieve ALB hostname from Ingress."
+            exit 1
+          fi
+          
+          # 2. Smoke test public endpoints with retries (waiting for ALB to become active)
+          echo "Smoke testing public endpoints at http://$ALB_HOST..."
+          for i in {1..30}; do
+            if curl -f -s "http://$ALB_HOST/health" && curl -f -s "http://$ALB_HOST/api/products" > /dev/null; then
+              echo "Staging Smoke Test Passed!"
+              exit 0
+            fi
+            echo "Waiting for Load Balancer to active-route traffic... (Attempt $i/30)"
+            sleep 10
+          done
+          
+          echo "Error: Staging Smoke Test FAILED"
+          exit 1
+
+# -----------------------------
+# 5. MANUAL APPROVAL FOR PROD
+# -----------------------------
+  approve:
+    name: Approve Production
+    needs: [build, validate]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - run: echo "Production deployment approved by reviewer"
+
+# -----------------------------
+# 6. DEPLOY TO PROD
+# -----------------------------
+  deploy-prod:
+    name: Deploy to Production
+    needs: approve
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: AWS Login
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          audience: sts.amazonaws.com
+
+      - name: Login ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name ${{ env.CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+
+      - name: Deploy All Services to Production
+        run: |
+          REGISTRY="${{ steps.login-ecr.outputs.registry }}"
+          IMAGE_TAG="sha-${{ github.sha }}"
+          NAMESPACE="cloudmart-prod"
+
+          kubectl apply -f k8s/namespace.yaml
+
+          SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id cloudmart/production/application | jq -r '.SecretString')
+          DB_HOST=$(echo $SECRET_JSON | jq -r .db_host)
+          DB_USER=$(echo $SECRET_JSON | jq -r .db_user)
+          DB_PASSWORD=$(echo $SECRET_JSON | jq -r .db_password)
+          JWT_SECRET=$(echo $SECRET_JSON | jq -r .jwt_secret)
+
+          kubectl create secret generic cloudmart-secrets \
+            --namespace $NAMESPACE \
+            --from-literal=DB_HOST="$DB_HOST" \
+            --from-literal=DB_USER="$DB_USER" \
+            --from-literal=DB_PASSWORD="$DB_PASSWORD" \
+            --from-literal=JWT_SECRET="$JWT_SECRET" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+          sed \
+            -e "s|AWS_ACCOUNT_ID|${AWS_ACCOUNT_ID}|g" \
+            -e "s|ROLE_ENVIRONMENT|production|g" \
+            k8s/security/service-accounts.yaml | kubectl apply -f -
+
+          for POLICY in \
+            k8s/security/network-policy-default-deny.yaml \
+            k8s/security/network-policies.yaml \
+            k8s/security/notification-network-policy.yaml \
+            k8s/security/order-egress-policy.yaml \
+            k8s/security/product-egress-policy.yaml \
+            k8s/security/user-egress-policy.yaml; do
+            kubectl apply -f "$POLICY"
+          done
+
+          kubectl apply -f k8s/configmap-prod.yaml
+          sed \
+            -e "s|ACM_CERTIFICATE_ARN|${ACM_CERTIFICATE_ARN}|g" \
+            -e "s|WAF_ACL_ARN|${WAF_ACL_ARN}|g" \
+            -e "s|ALB_SECURITY_GROUP_ID|${ALB_SECURITY_GROUP_ID}|g" \
+            k8s/ingress-prod.yaml | kubectl apply -f -
+
+          for SERVICE in frontend user-service product-service order-service notification-service; do
+            MANIFEST_FILE="k8s/$SERVICE.yaml"
+            echo "Deploying $SERVICE to $NAMESPACE..."
+
+            sed \
+              -e "s|namespace: cloudmart-prod|namespace: $NAMESPACE|g" \
+              "$MANIFEST_FILE" | kubectl apply -f -
+            
+            kubectl set image deployment/$SERVICE \
+              $SERVICE=$REGISTRY/$SERVICE:$IMAGE_TAG \
+              -n $NAMESPACE
+          done
+
+          # product-service: use canary if Argo Rollouts is installed
+          if kubectl get crd rollouts.argoproj.io > /dev/null 2>&1; then
+            echo "Argo Rollouts detected — applying canary rollout for product-service..."
+            sed "s|image: .*/product-service:.*|image: $REGISTRY/product-service:$IMAGE_TAG|g" \
+              k8s/product-service-canary.yaml | kubectl apply -f -
+
+            curl -LO https://github.com/argoproj/argo-rollouts/releases/latest/download/kubectl-argo-rollouts-linux-amd64
+            chmod +x ./kubectl-argo-rollouts-linux-amd64
+            sudo mv ./kubectl-argo-rollouts-linux-amd64 /usr/local/bin/kubectl-argo-rollouts
+
+            kubectl argo rollouts status product-service -n $NAMESPACE --timeout 10m
+          else
+            echo "Argo Rollouts not found — using standard rolling deployment for product-service..."
+
+            sed \
+              -e "s|namespace: cloudmart-prod|namespace: $NAMESPACE|g" \
+              k8s/product-service.yaml | kubectl apply -f -
+
+            kubectl set image deployment/product-service \
+              product-service=$REGISTRY/product-service:$IMAGE_TAG \
+              -n $NAMESPACE
+          fi
+
+      - name: Wait for Rollouts (Production)
+        run: |
+          NAMESPACE="cloudmart-prod"
+          for SERVICE in frontend user-service product-service order-service notification-service; do
+            echo "Waiting for $SERVICE rollout..."
+            kubectl rollout status deployment/$SERVICE -n $NAMESPACE --timeout=5m
+          done
+
+      - name: Apply Disaster Recovery Schedules
+        run: |
+          if kubectl get crd schedules.velero.io > /dev/null 2>&1; then
+            kubectl apply -f k8s/dr/velero-schedules.yaml
+          else
+            echo "Velero is not installed; follow docs/dr/DISASTER_RECOVERY_PLAN.md before enabling schedules."
+          fi
+
+      - name: Post-Deploy Smoke Tests (Production)
+        run: |
+          NAMESPACE="cloudmart-prod"
+          
+          # 1. Fetch the AWS ALB Hostname dynamically from Kubernetes Ingress
+          echo "Retrieving ALB Ingress Hostname..."
+          for i in {1..20}; do
+            ALB_HOST=$(kubectl get ingress cloudmart-ingress -n $NAMESPACE -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true)
+            if [ -n "$ALB_HOST" ]; then
+              echo "ALB Hostname detected: $ALB_HOST"
+              break
+            fi
+            echo "Waiting for Ingress controller to assign ALB hostname..."
+            sleep 10
+          done
+          
+          if [ -z "$ALB_HOST" ]; then
+            echo "Error: Failed to retrieve ALB hostname from Ingress."
+            exit 1
+          fi
+          
+          # 2. Smoke test public endpoints with retries (waiting for ALB to become active)
+          echo "Smoke testing public endpoints at http://$ALB_HOST..."
+          for i in {1..30}; do
+            if curl -f -s "http://$ALB_HOST/health" && curl -f -s "http://$ALB_HOST/api/products" > /dev/null; then
+              echo "Production Smoke Test Passed!"
+              exit 0
+            fi
+            echo "Waiting for Load Balancer to active-route traffic... (Attempt $i/30)"
+            sleep 10
+          done
+          
+          echo "Error: Production Smoke Test FAILED"
+          exit 1

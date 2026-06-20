@@ -15,13 +15,20 @@ spec:
       labels:
         app: notification-service
     spec:
-      # TODO: Add serviceAccountName for workload identity
-      # serviceAccountName: notification-service-sa
+      serviceAccountName: notification-service-sa
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: notification-service
-        image: <YOUR-REGISTRY>/notification-service:latest
+        image: 537090271991.dkr.ecr.us-east-1.amazonaws.com/notification-service:latest
         ports:
         - containerPort: 8004
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+          runAsNonRoot: true
         env:
         - name: PORT
           value: "8004"
@@ -45,6 +52,16 @@ spec:
             configMapKeyRef:
               name: cloudmart-config
               key: NOTIFICATION_POLL_INTERVAL
+        - name: SQS_QUEUE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: cloudmart-config
+              key: SQS_QUEUE_URL
+        - name: AWS_REGION
+          valueFrom:
+            configMapKeyRef:
+              name: cloudmart-config
+              key: AWS_REGION
         resources:
           requests:
             cpu: 50m
