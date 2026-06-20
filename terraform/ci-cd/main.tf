@@ -130,6 +130,13 @@ resource "aws_iam_policy" "github_actions_policy" {
           "eks:ListClusters"
         ]
         Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue"
+        ]
+        Resource = "arn:aws:secretsmanager:*:*:secret:cloudmart/*"
       }
     ]
   })
