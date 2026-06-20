@@ -11,8 +11,8 @@ FROM python:3.11-slim
 # Upgrade packages to patch vulnerabilities
 RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user with explicit UID for Fargate compatibility
-RUN groupadd -r appuser --gid 999 && useradd -r -g appuser --uid 999 appuser
+# Create non-root user
+RUN groupadd -r appuser && useradd -r -g appuser appuser
 
 WORKDIR /app
 
