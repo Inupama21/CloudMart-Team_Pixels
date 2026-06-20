@@ -11,8 +11,8 @@ FROM node:20-alpine
 # Upgrade packages to patch vulnerabilities
 RUN apk update && apk upgrade --no-cache
 
-# Create non-root user
-RUN addgroup -S appuser && adduser -S appuser -G appuser
+# Create non-root user with explicit UID for Fargate compatibility
+RUN addgroup -S -g 999 appuser && adduser -S -u 999 appuser -G appuser
 
 WORKDIR /app
 
