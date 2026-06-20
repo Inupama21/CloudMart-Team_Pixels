@@ -1,3 +1,11 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: user-service-sa
+  namespace: cloudmart-prod
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::537090271991:role/cloudmart-production-user-service-role
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -77,10 +85,6 @@ spec:
             configMapKeyRef:
               name: cloudmart-config
               key: DB_SSLMODE
-        volumeMounts:
-        - name: application-secrets
-          mountPath: /mnt/secrets-store
-          readOnly: true
         resources:
           requests:
             cpu: 100m
@@ -100,13 +104,6 @@ spec:
             port: 8003
           initialDelaySeconds: 10
           periodSeconds: 30
-      volumes:
-      - name: application-secrets
-        csi:
-          driver: secrets-store.csi.k8s.io
-          readOnly: true
-          volumeAttributes:
-            secretProviderClass: cloudmart-application-secret
 ---
 apiVersion: v1
 kind: Service
